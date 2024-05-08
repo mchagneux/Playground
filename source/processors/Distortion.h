@@ -4,71 +4,73 @@
 
 using namespace juce;
 
-struct DistortionGroup
-{
-    explicit DistortionGroup (AudioProcessorParameterGroup& layout)
-        : enabled (addToLayout<AudioParameterBool> (layout,
-                                                    ParameterID { ID::distortionEnabled, 1 },
-                                                    "Distortion",
-                                                    true)),
-            type (addToLayout<AudioParameterChoice> (layout,
-                                                    ParameterID { ID::distortionType, 1 },
-                                                    "Waveshaper",
-                                                    StringArray { "std::tanh", "Approx. tanh" },
-                                                    0)),
-            inGain (addToLayout<Parameter> (layout,
-                                            ParameterID { ID::distortionInGain, 1 },
-                                            "Gain",
-                                            NormalisableRange<float> (-40.0f, 40.0f),
-                                            0.0f,
-                                            getDbAttributes())),
-            lowpass (addToLayout<Parameter> (layout,
-                                            ParameterID { ID::distortionLowpass, 1 },
-                                            "Post Low-pass",
-                                            NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
-                                            22000.0f,
-                                            getHzAttributes())),
-            highpass (addToLayout<Parameter> (layout,
-                                            ParameterID { ID::distortionHighpass, 1 },
-                                            "Pre High-pass",
-                                            NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
-                                            20.0f,
-                                            getHzAttributes())),
-            compGain (addToLayout<Parameter> (layout,
-                                            ParameterID { ID::distortionCompGain, 1 },
-                                            "Compensat.",
-                                            NormalisableRange<float> (-40.0f, 40.0f),
-                                            0.0f,
-                                            getDbAttributes())),
-            mix (addToLayout<Parameter> (layout,
-                                        ParameterID { ID::distortionMix, 1 },
-                                        "Mix",
-                                        NormalisableRange<float> (0.0f, 100.0f),
-                                        100.0f,
-                                        getPercentageAttributes())),
-            oversampler (addToLayout<AudioParameterChoice> (layout,
-                                                            ParameterID { ID::distortionOversampler, 1 },
-                                                            "Oversampling",
-                                                            StringArray { "2X",
-                                                                        "4X",
-                                                                        "8X",
-                                                                        "2X compensated",
-                                                                        "4X compensated",
-                                                                        "8X compensated" },
-                                                            1)) {}
 
-    AudioParameterBool& enabled;
-    AudioParameterChoice& type;
-    Parameter& inGain;
-    Parameter& lowpass;
-    Parameter& highpass;
-    Parameter& compGain;
-    Parameter& mix;
-    AudioParameterChoice& oversampler;
-};
 
 struct DistortionProcessor
 {
+    struct Parameters
+    {
+        explicit Parameters (AudioProcessorParameterGroup& layout)
+            : enabled (addToLayout<AudioParameterBool> (layout,
+                                                        ParameterID { ID::distortionEnabled, 1 },
+                                                        "Distortion",
+                                                        true)),
+                type (addToLayout<AudioParameterChoice> (layout,
+                                                        ParameterID { ID::distortionType, 1 },
+                                                        "Waveshaper",
+                                                        StringArray { "std::tanh", "Approx. tanh" },
+                                                        0)),
+                inGain (addToLayout<Parameter> (layout,
+                                                ParameterID { ID::distortionInGain, 1 },
+                                                "Gain",
+                                                NormalisableRange<float> (-40.0f, 40.0f),
+                                                0.0f,
+                                                getDbAttributes())),
+                lowpass (addToLayout<Parameter> (layout,
+                                                ParameterID { ID::distortionLowpass, 1 },
+                                                "Post Low-pass",
+                                                NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
+                                                22000.0f,
+                                                getHzAttributes())),
+                highpass (addToLayout<Parameter> (layout,
+                                                ParameterID { ID::distortionHighpass, 1 },
+                                                "Pre High-pass",
+                                                NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
+                                                20.0f,
+                                                getHzAttributes())),
+                compGain (addToLayout<Parameter> (layout,
+                                                ParameterID { ID::distortionCompGain, 1 },
+                                                "Compensat.",
+                                                NormalisableRange<float> (-40.0f, 40.0f),
+                                                0.0f,
+                                                getDbAttributes())),
+                mix (addToLayout<Parameter> (layout,
+                                            ParameterID { ID::distortionMix, 1 },
+                                            "Mix",
+                                            NormalisableRange<float> (0.0f, 100.0f),
+                                            100.0f,
+                                            getPercentageAttributes())),
+                oversampler (addToLayout<AudioParameterChoice> (layout,
+                                                                ParameterID { ID::distortionOversampler, 1 },
+                                                                "Oversampling",
+                                                                StringArray { "2X",
+                                                                            "4X",
+                                                                            "8X",
+                                                                            "2X compensated",
+                                                                            "4X compensated",
+                                                                            "8X compensated" },
+                                                                1)) {}
+
+        AudioParameterBool& enabled;
+        AudioParameterChoice& type;
+        Parameter& inGain;
+        Parameter& lowpass;
+        Parameter& highpass;
+        Parameter& compGain;
+        Parameter& mix;
+        AudioParameterChoice& oversampler;
+    };
+
     DistortionProcessor()
     {
         forEach ([] (dsp::Gain<float>& gain) { gain.setRampDurationSeconds (0.05); },

@@ -50,13 +50,21 @@ public:
     // void updateGraph();
     // void connectAudioNodes();
 
+    struct ParameterReferences
+    {
+        explicit ParameterReferences (AudioProcessorValueTreeState::ParameterLayout& layout)
+            :  distortion    (addToLayout<AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")) {}
+        DistortionProcessor::Parameters distortion;
+
+    };
+
+    const ParameterReferences& getParameterValues() const noexcept { return parameters; }
 
 private:
     juce::StringArray processorChoices {"Empty", "Gain", "Filter" };
-    juce::AudioProcessorValueTreeState parameters; 
-    using Chain = juce::dsp::ProcessorChain<DistortionProcessor,
-                                            juce::dsp::LadderFilter<float>,
-                                            juce::dsp::Limiter<float>>;
+    juce::AudioProcessorValueTreeState apvts; 
+    ParameterReferences parameters; 
+    using Chain = juce::dsp::ProcessorChain<DistortionProcessor>;
 
 
     //==============================================================================
