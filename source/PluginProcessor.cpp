@@ -1,22 +1,10 @@
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
 
 
-#include "processors/Gain.h"
-#include "processors/IIRFilter.h"
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       ), 
-                       apvts(*this, nullptr)
+     : AudioPluginAudioProcessor(AudioProcessorValueTreeState::ParameterLayout{})
 {
-    
 
 }
 
@@ -139,12 +127,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return false; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new AudioPluginAudioProcessorEditor (*this);
+    return nullptr;
 }
 
 //==============================================================================

@@ -2,10 +2,12 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+
+#include "processors/Ladder.h"
 #include "processors/Distortion.h"
 
 //==============================================================================
-class AudioPluginAudioProcessor final : public juce::AudioProcessor
+class AudioPluginAudioProcessor final : public juce::AudioProcessor, private juce::ValueTree::Listener
 {
 public:
     using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
@@ -42,6 +44,11 @@ public:
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
 
+    void valueTreePropertyChanged (ValueTree&, const Identifier&) final
+    {
+        requiresUpdate.store (true);
+    }
+
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
@@ -53,18 +60,32 @@ public:
     struct ParameterReferences
     {
         explicit ParameterReferences (AudioProcessorValueTreeState::ParameterLayout& layout)
-            :  distortion    (addToLayout<AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")) {}
+            :  distortion    (addToLayout<AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")),
+            ladder        (addToLayout<AudioProcessorParameterGroup> (layout, "ladder",        "Ladder",        "|")) {}
+        
         DistortionProcessor::Parameters distortion;
+        LadderProcessor::Parameters ladder;
 
     };
 
     const ParameterReferences& getParameterValues() const noexcept { return parameters; }
 
 private:
-    juce::StringArray processorChoices {"Empty", "Gain", "Filter" };
-    juce::AudioProcessorValueTreeState apvts; 
+
+    explicit AudioPluginAudioProcessor (AudioProcessorValueTreeState::ParameterLayout layout)
+        : AudioProcessor (BusesProperties().withInput ("In",   AudioChannelSet::stereo())
+                                           .withOutput ("Out", AudioChannelSet::stereo())),
+          parameters { layout },
+          apvts { *this, nullptr, "state", std::move (layout) }
+    {
+        apvts.state.addListener (this);
+    }
+    
+    std::atomic<bool> requiresUpdate { true };
+
     ParameterReferences parameters; 
-    using Chain = juce::dsp::ProcessorChain<DistortionProcessor>;
+    juce::AudioProcessorValueTreeState apvts; 
+    using Chain = juce::dsp::ProcessorChain<DistortionProcessor, dsp::LadderFilter<float>>;
 
 
     //==============================================================================
