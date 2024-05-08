@@ -1,6 +1,8 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
+#include "processors/Distortion.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -44,24 +46,18 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    void initialiseGraph();
-    void updateGraph();
-    void connectAudioNodes();
+    // void initialiseGraph();
+    // void updateGraph();
+    // void connectAudioNodes();
 
 
 private:
     juce::StringArray processorChoices {"Empty", "Gain", "Filter" };
-
     juce::AudioProcessorValueTreeState parameters; 
+    using Chain = juce::dsp::ProcessorChain<DistortionProcessor,
+                                            juce::dsp::LadderFilter<float>,
+                                            juce::dsp::Limiter<float>>;
 
-    std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;
-
-    Node::Ptr audioInputNode;
-    Node::Ptr audioOutputNode;
-
-    Node::Ptr slot1Node;
-    Node::Ptr slot2Node;
-    Node::Ptr slot3Node;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)

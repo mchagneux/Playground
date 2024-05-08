@@ -13,12 +13,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ), parameters(*this, 
-                       nullptr, 
-                       juce::Identifier("Playground"), 
-                       {std::make_unique<juce::AudioParameterChoice> ("slot1",   "Slot 1", processorChoices, 0),             // default value
-                        std::make_unique<juce::AudioParameterChoice> ("slot2",   "Slot 2",     processorChoices, 0),
-                        std::make_unique<juce::AudioParameterChoice> ("slot3",   "Slot 3",     processorChoices, 0)}), mainProcessor  (new juce::AudioProcessorGraph())
+                       ), 
+                       parameters(*this, nullptr)
 {
     
 
@@ -98,13 +94,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    mainProcessor->setPlayConfigDetails (getMainBusNumInputChannels(),
-                                            getMainBusNumOutputChannels(),
-                                            sampleRate, samplesPerBlock);
 
-    mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
-
-    initialiseGraph();
 }
 
 
@@ -112,7 +102,6 @@ void AudioPluginAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
-    mainProcessor->releaseResources();
 
 }
 
@@ -143,12 +132,8 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    for (int i = getTotalNumInputChannels(); i < getTotalNumOutputChannels(); ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
 
-    updateGraph();
 
-    mainProcessor->processBlock (buffer, midiMessages);
 }
 
 //==============================================================================
@@ -176,149 +161,7 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
-}
 
-
-void AudioPluginAudioProcessor::connectAudioNodes()
-
-{
-    for (int channel = 0; channel < 2; ++channel)
-        mainProcessor->addConnection ({ { audioInputNode->nodeID,  channel },
-                                        { audioOutputNode->nodeID, channel } });
-}
-
-
-void AudioPluginAudioProcessor::initialiseGraph()
-
-{
-    mainProcessor->clear();
-
-    audioInputNode  = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioInputNode));
-    audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
-
-    connectAudioNodes();
-}
-
-void AudioPluginAudioProcessor::updateGraph()
-{
-    bool hasChanged = false;
-
-    juce::Array<juce::AudioParameterChoice*> choices {
-                                                    static_cast<juce::AudioParameterChoice*>(parameters.getParameter("slot1")), 
-                                                    static_cast<juce::AudioParameterChoice*>(parameters.getParameter("slot2")),
-                                                    static_cast<juce::AudioParameterChoice*>(parameters.getParameter("slot3"))};
-
-    // juce::Array<juce::AudioParameterBool*> bypasses { bypassSlot1,
-    //                                                   bypassSlot2,
-    //                                                   bypassSlot3 };
-
-    juce::ReferenceCountedArray<Node> slots;
-    slots.add (slot1Node);
-    slots.add (slot2Node);
-    slots.add (slot3Node);
-
-    for (int i = 0; i < 3; ++i)
-    {
-        auto& choice = choices.getReference (i);
-        auto  slot   = slots  .getUnchecked (i);
-
-        if (choice->getIndex() == 0)            // [1]
-        {
-            if (slot != nullptr)
-            {
-                mainProcessor->removeNode (slot.get());
-                slots.set (i, nullptr);
-                hasChanged = true;
-            }
-        }
-        else if (choice->getIndex() == 1)       // [3]
-        {
-            if (slot != nullptr)
-            {
-                if (slot->getProcessor()->getName() == "Gain")
-                    continue;
-
-                mainProcessor->removeNode (slot.get());
-            }
-
-            slots.set (i, mainProcessor->addNode (std::make_unique<GainProcessor>()));
-            hasChanged = true;
-        }
-        else if (choice->getIndex() == 2)       // [4]
-        {
-            if (slot != nullptr)
-            {
-                if (slot->getProcessor()->getName() == "Filter")
-                    continue;
-
-                mainProcessor->removeNode (slot.get());
-            }
-
-            slots.set (i, mainProcessor->addNode (std::make_unique<FilterProcessor>()));
-            hasChanged = true;
-        }
-    }
-
-    if (hasChanged)
-    {
-        for (auto connection : mainProcessor->getConnections())     // [5]
-            mainProcessor->removeConnection (connection);
-
-        juce::ReferenceCountedArray<Node> activeSlots;
-
-        for (auto slot : slots)
-        {
-            if (slot != nullptr)
-            {
-                activeSlots.add (slot);                             // [6]
-
-                slot->getProcessor()->setPlayConfigDetails (getMainBusNumInputChannels(),
-                                                            getMainBusNumOutputChannels(),
-                                                            getSampleRate(), getBlockSize());
-            }
-        }
-
-        if (activeSlots.isEmpty())                                  // [7]
-        {
-            connectAudioNodes();
-        }
-        else
-        {
-            for (int i = 0; i < activeSlots.size() - 1; ++i)        // [8]
-            {
-                for (int channel = 0; channel < 2; ++channel)
-                    mainProcessor->addConnection ({ { activeSlots.getUnchecked (i)->nodeID,      channel },
-                                                    { activeSlots.getUnchecked (i + 1)->nodeID,  channel } });
-            }
-
-            for (int channel = 0; channel < 2; ++channel)           // [9]
-            {
-                mainProcessor->addConnection ({ { audioInputNode->nodeID,         channel },
-                                                { activeSlots.getFirst()->nodeID, channel } });
-                mainProcessor->addConnection ({ { activeSlots.getLast()->nodeID,  channel },
-                                                { audioOutputNode->nodeID,        channel } });
-            }
-        }
-
-
-        for (auto node : mainProcessor->getNodes())                 // [10]
-            node->getProcessor()->enableAllBuses();
-    }
-
-    // for (int i = 0; i < 3; ++i)
-    // {
-    //     auto  slot   = slots   .getUnchecked (i);
-    //     auto& bypass = bypasses.getReference (i);
-
-    //     if (slot != nullptr)
-    //         slot->setBypassed (bypass->get());
-    // }
-
-    // audioInputNode->setBypassed (muteInput->get());
-
-    slot1Node = slots.getUnchecked (0);
-    slot2Node = slots.getUnchecked (1);
-    slot3Node = slots.getUnchecked (2);
 }
 
 //==============================================================================

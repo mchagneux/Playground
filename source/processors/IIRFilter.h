@@ -1,4 +1,4 @@
-// #pragma once
+#pragma once
 
 #include "Base.h"
 #include <juce_dsp/juce_dsp.h>
