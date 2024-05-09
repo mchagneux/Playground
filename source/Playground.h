@@ -121,11 +121,12 @@ public:
     //==============================================================================
     void paint (Graphics& g) override
     {
-        auto rect = getLocalBounds();
+        // auto rect = getLocalBounds();
 
+        // auto currentBound = getBounds();
 
-        g.setColour (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
-        g.fillRect (rect);
+        // g.setColour (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+        // g.fillRect (currentBound);
 
     }
 
@@ -147,7 +148,6 @@ private:
 
     //==============================================================================
     PlaygroundProcessor& proc;
-
     DistortionControls  distortionControls  { *this, proc.getParameterValues().distortion };
     // LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
 

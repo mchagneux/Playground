@@ -3,8 +3,71 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 // #include <juce_core/juce_core.h>
+// #include "./SliderLookAndFeel.h"
 
 using namespace juce; 
+
+// class CustomSliderLookAndFeel : public juce::LookAndFeel_V4
+// {
+// public:
+//     CustomSliderLookAndFeel()
+//     {
+
+//     }
+
+//     void drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,
+//                            float sliderPos, float minSliderPos, float maxSliderPos,
+//                            const juce::Slider::SliderStyle style, juce::Slider& slider) override
+//     {
+//         juce::ignoreUnused(x, minSliderPos, maxSliderPos, style, slider);
+
+//         auto trackWidth = (float) height * 0.025f;
+
+//         juce::Point<float> startPoint ((float) width * 0.05f, (float) y + (float) height * 0.5f);
+//         juce::Point<float> endPoint ((float) width * 0.95f, startPoint.y);
+//         float distance = endPoint.x - startPoint.x;
+
+//         juce::Path backgroundTrack;
+//         backgroundTrack.startNewSubPath (startPoint);
+//         backgroundTrack.lineTo (endPoint);
+
+//         g.setColour (juce::Colour{ 0xff3E3846 });
+//         g.strokePath (backgroundTrack, { trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
+
+
+//         float thumbWidth = (float) width / 8.f;
+//         float thumbHeight = thumbWidth / 2.f;
+
+
+//         float thumbX = startPoint.getX() + sliderPos / (float) width * (distance - 20.f);
+//         juce::Point<float> thumbCenter = { thumbX, (float) y + (float) height * 0.5f };
+
+//         juce::Rectangle<float> thumbRec = { thumbCenter.getX() - thumbWidth / 2.f, thumbCenter.getY() - thumbHeight / 2, thumbWidth, thumbHeight };
+//         g.setColour (juce::Colour { 0xff9F0E5D });
+//         g.fillRoundedRectangle(thumbRec, thumbHeight / 2.f);
+
+//         float expansionRatio = 1.2f;
+
+//         thumbRec.setWidth(thumbRec.getWidth() * expansionRatio);
+//         thumbRec.setHeight(thumbRec.getHeight() * expansionRatio);
+//         thumbRec.setCentre(thumbCenter);
+
+//         juce::Image offscreenImage = juce::Image(juce::Image::ARGB, width, height, true);
+
+//         juce::Graphics offscreenGraphics(offscreenImage);
+
+//         offscreenGraphics.setColour(juce::Colour { 0xff9F0E5D });
+//         offscreenGraphics.fillRoundedRectangle(thumbRec, thumbHeight / 2.0f * expansionRatio);
+
+//         juce::ImageConvolutionKernel kernel(15);
+//         kernel.createGaussianBlur(3.0f);
+//         kernel.applyToImage(offscreenImage, offscreenImage, offscreenImage.getBounds());
+
+//         g.drawImageAt(offscreenImage, 0, 0);
+//     }
+// };
+
+
 
 class ComponentWithParamMenu : public Component
 {
@@ -25,6 +88,21 @@ class ComponentWithParamMenu : public Component
         AudioProcessorEditor& editor;
         RangedAudioParameter& param;
 };
+// class CustomVerticalSlider: public juce::Slider
+// {
+// public: 
+//     CustomVerticalSlider() {
+//        setSliderStyle(juce::Slider::SliderStyle::LinearVertical);
+//        setTextBoxStyle(juce::Slider::TextBoxBelow, false, 0, 0);
+//        setLookAndFeel(&customSliderLookAndFeel);
+//     }
+//     ~CustomVerticalSlider() {
+//         setLookAndFeel(nullptr);
+//     }
+// private:
+//     SliderLookAndFeel customSliderLookAndFeel;
+
+// };
 
 class AttachedSlider final : public ComponentWithParamMenu
 {
@@ -35,7 +113,7 @@ class AttachedSlider final : public ComponentWithParamMenu
                 attachment (paramIn, slider)
         {
             slider.addMouseListener (this, true);
-
+            // slider.setLookAndFeel(new CustomSliderLookAndFeel());
             addAllAndMakeVisible (*this, slider, label);
 
             slider.setTextValueSuffix (" " + paramIn.label);
@@ -47,7 +125,7 @@ class AttachedSlider final : public ComponentWithParamMenu
         void resized() override { slider.setBounds (getLocalBounds().reduced (0, 40)); }
 
     private:
-        Slider slider { Slider::RotaryVerticalDrag, Slider::TextBoxBelow };
+        Slider slider { Slider::LinearBarVertical, Slider::TextBoxBelow };
         Label label;
         SliderParameterAttachment attachment;
 };
