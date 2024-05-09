@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Utils.h"
 #include "../Parameters.h"
 #include <juce_dsp/juce_dsp.h>

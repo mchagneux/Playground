@@ -1,20 +1,21 @@
-#pragma once
+# pragma once 
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
 #include "processors/Ladder.h"
 #include "processors/Distortion.h"
+#include "ui/Distortion.h"
 
 //==============================================================================
-class AudioPluginAudioProcessor final : public juce::AudioProcessor, private juce::ValueTree::Listener
+class PlaygroundProcessor : public juce::AudioProcessor, private juce::ValueTree::Listener
 {
 public:
     using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
     using Node = juce::AudioProcessorGraph::Node;
     //==============================================================================
-    AudioPluginAudioProcessor();
-    ~AudioPluginAudioProcessor() override;
+    PlaygroundProcessor();
+    ~PlaygroundProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -26,8 +27,8 @@ public:
     using AudioProcessor::processBlock;
 
     //==============================================================================
-    juce::AudioProcessorEditor* createEditor() override;
-    bool hasEditor() const override;
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    bool hasEditor() const override { return false; }
 
     //==============================================================================
     const juce::String getName() const override;
@@ -52,6 +53,8 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    void update();
+    void reset() override;
 
     // void initialiseGraph();
     // void updateGraph();
@@ -72,7 +75,7 @@ public:
 
 private:
 
-    explicit AudioPluginAudioProcessor (AudioProcessorValueTreeState::ParameterLayout layout)
+    explicit PlaygroundProcessor (AudioProcessorValueTreeState::ParameterLayout layout)
         : AudioProcessor (BusesProperties().withInput ("In",   AudioChannelSet::stereo())
                                            .withOutput ("Out", AudioChannelSet::stereo())),
           parameters { layout },
@@ -87,7 +90,77 @@ private:
     juce::AudioProcessorValueTreeState apvts; 
     using Chain = juce::dsp::ProcessorChain<DistortionProcessor, dsp::LadderFilter<float>>;
 
+    Chain chain;
+
+    enum ProcessorIndices
+    {
+        distortionIndex,
+        ladderIndex,
+    };
+    //==============================================================================
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundProcessor)
+};
+
+
+class PlaygroundEditor final : public AudioProcessorEditor
+{
+public:
+    explicit PlaygroundEditor (PlaygroundProcessor& p)
+        : AudioProcessorEditor (&p),
+          proc (p) 
+    {
+
+        addAllAndMakeVisible (*this,
+                              distortionControls);
+
+
+        setSize (800, 430);
+        setResizable (false, false);
+    }
 
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+    void paint (Graphics& g) override
+    {
+        auto rect = getLocalBounds();
+
+
+        g.setColour (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
+        g.fillRect (rect);
+
+    }
+
+    void resized() override
+    {
+        auto rect = getLocalBounds();
+
+        forEach ([&] (Component& comp) { comp.setBounds (rect); },
+                 distortionControls);
+    }
+
+private:
+
+    //==============================================================================
+    static constexpr auto topSize    = 40,
+                          bottomSize = 40,
+                          midSize    = 40,
+                          tabSize    = 155;
+
+    //==============================================================================
+    PlaygroundProcessor& proc;
+
+    DistortionControls  distortionControls  { *this, proc.getParameterValues().distortion };
+    // LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
+
+    //==============================================================================
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundEditor)
+};
+
+struct Playground final : public PlaygroundProcessor
+{
+    AudioProcessorEditor* createEditor() override
+    {
+        return new PlaygroundEditor (*this);
+    }
+
+    bool hasEditor() const override { return true; }
 };
