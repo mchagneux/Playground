@@ -21,9 +21,11 @@ set (TARGET_NAME ${PROJECT_NAME})
 # included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
 # include that subdirectory as part of the build.
 
+
+
 find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
-# add_subdirectory(JUCE)                    # If you've put JUCE in a subdirectory called JUCE
+# add_subdirectory(cmajor)                    # If you've put JUCE in a subdirectory called JUCE
 
 # If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
 # system. This setup should be done before calling `juce_add_plugin`.
@@ -67,6 +69,11 @@ juce_add_plugin(${TARGET_NAME}
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
 
+# Try to find the Cmajor library
+find_library(CMAJOR NAMES libCmajPerformer PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../cmajor/build/tools/CmajDLL" REQUIRED)
+
+# Library found, include the CMajor API headers
+target_include_directories(${TARGET_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../cmajor/include/tools/CmajDLL")
 
 # Add all source files to file list
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/source/*.h)
@@ -85,11 +92,15 @@ foreach (dir ${source_dirs})
     endif ()
 endforeach ()
 
-
+# target_include_directories(${TARGET_NAME} PRIVATE /home/mathis/audio_dev/cmajor/include/cmajor)
 
 
 # Make the folder structure visible in the IDE
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX "source" FILES ${SOURCES})
+
+
+
+
 
 # target_sources(AudioPluginExample
 #     PRIVATE
@@ -134,4 +145,5 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+        juce::juce_recommended_warning_flags
+        ${CMAJOR})
