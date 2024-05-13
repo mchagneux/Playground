@@ -104,6 +104,7 @@ void PlaygroundProcessor::reset()
 void PlaygroundProcessor::update()
 {
     {
+
         DistortionProcessor& distortion = dsp::get<distortionIndex> (chain);
 
         if (distortion.currentIndexOversampling != parameters.distortion.oversampler.getIndex())
@@ -146,6 +147,9 @@ void PlaygroundProcessor::update()
         }());
 
         dsp::setBypassed<ladderIndex> (chain, ! parameters.ladder.enabled);
+
+        dsp::setBypassed<cmajorIndex> (chain, ! parameters.cmajor.enabled);
+
     }
 
     requiresUpdate.store (false);

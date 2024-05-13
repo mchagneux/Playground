@@ -1,6 +1,5 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
 #include "../processors/Distortion.h"
 #include "./Components.h"
 

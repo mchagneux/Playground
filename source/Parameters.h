@@ -145,6 +145,8 @@ namespace ID
     PARAMETER_ID (ladderResonance)
     PARAMETER_ID (ladderDrive)
     PARAMETER_ID (ladderMode)
+    PARAMETER_ID (cmajorEnabled)
+
 
    #undef PARAMETER_ID
 }

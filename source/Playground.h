@@ -6,13 +6,16 @@
 #include "processors/Ladder.h"
 #include "processors/Distortion.h"
 #include "ui/Distortion.h"
+#include "ui/Ladder.h"
+#include "ui/Cmajor.h"
+#include "processors/CmajorStereoDSPEffect.h"
+
+// #include "ui/Cmajor.h"
 
 //==============================================================================
 class PlaygroundProcessor : public juce::AudioProcessor, private juce::ValueTree::Listener
 {
 public:
-    using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
-    using Node = juce::AudioProcessorGraph::Node;
     //==============================================================================
     PlaygroundProcessor();
     ~PlaygroundProcessor() override;
@@ -64,15 +67,19 @@ public:
     {
         explicit ParameterReferences (AudioProcessorValueTreeState::ParameterLayout& layout)
             :  distortion    (addToLayout<AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")),
-            ladder        (addToLayout<AudioProcessorParameterGroup> (layout, "ladder",        "Ladder",        "|")) {}
+            ladder        (addToLayout<AudioProcessorParameterGroup> (layout, "ladder",        "Ladder",        "|")),
+            cmajor (addToLayout<AudioProcessorParameterGroup> (layout, "cmajor",        "Cmajor",        "|")) {}
         
         DistortionProcessor::Parameters distortion;
         LadderProcessor::Parameters ladder;
+        CmajorStereoDSPEffect::Parameters cmajor;
 
     };
 
-    const ParameterReferences& getParameterValues() const noexcept { return parameters; }
+    CmajorStereoDSPEffect::Processor& getCmajorDSPEffectProcessor() {return dsp::get<cmajorIndex> (chain);}
 
+    const ParameterReferences& getParameterValues() const noexcept { return parameters; }
+    // CmajorStereoDSPEffect& getCmajorDSP
 private:
 
     explicit PlaygroundProcessor (AudioProcessorValueTreeState::ParameterLayout layout)
@@ -88,7 +95,9 @@ private:
 
     ParameterReferences parameters; 
     juce::AudioProcessorValueTreeState apvts; 
-    using Chain = juce::dsp::ProcessorChain<DistortionProcessor, dsp::LadderFilter<float>>;
+    using Chain = juce::dsp::ProcessorChain<DistortionProcessor, 
+                                            dsp::LadderFilter<float>, 
+                                            CmajorStereoDSPEffect::Processor>;
 
     Chain chain;
 
@@ -96,6 +105,7 @@ private:
     {
         distortionIndex,
         ladderIndex,
+        cmajorIndex
     };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundProcessor)
@@ -111,11 +121,13 @@ public:
     {
 
         addAllAndMakeVisible (*this,
-                              distortionControls);
+                              distortionControls, 
+                              ladderControls,
+                              dragArea);
 
 
-        setSize (800, 430);
-        setResizable (false, false);
+        setSize (1280, 720);
+        setResizable (true, true);
     }
 
     //==============================================================================
@@ -134,22 +146,31 @@ public:
     {
         auto rect = getLocalBounds();
 
-        forEach ([&] (Component& comp) { comp.setBounds (rect); },
-                 distortionControls);
+        auto distortionArea = rect.removeFromLeft(0.3*getWidth());
+        distortionControls.setBounds(distortionArea);
+        auto ladderArea = rect.removeFromLeft(0.3*getWidth());
+        ladderControls.setBounds(ladderArea);
+        dragArea.setBounds(rect);
+
+
+        // forEach ([&] (Component& comp) { comp.setBounds (rect); },
+        //          distortionControls);
     }
 
 private:
 
     //==============================================================================
-    static constexpr auto topSize    = 40,
-                          bottomSize = 40,
-                          midSize    = 40,
-                          tabSize    = 155;
+    // static constexpr auto topSize    = 40,
+    //                       bottomSize = 40,
+    //                       midSize    = 40,
+    //                       tabSize    = 155;
 
     //==============================================================================
     PlaygroundProcessor& proc;
     DistortionControls  distortionControls  { *this, proc.getParameterValues().distortion };
-    // LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
+    LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
+    CmajorStereoDSPEffect::ExtraEditorComponent dragArea {proc.getCmajorDSPEffectProcessor()}; 
+    // CmajorUI::DragArea<juce::AudioProcessorEditor> cmajorDragArea {*this};
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundEditor)
