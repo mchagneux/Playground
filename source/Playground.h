@@ -7,7 +7,6 @@
 #include "processors/Distortion.h"
 #include "ui/Distortion.h"
 #include "ui/Ladder.h"
-#include "ui/Cmajor.h"
 #include "processors/CmajorStereoDSPEffect.h"
 
 // #include "ui/Cmajor.h"
@@ -122,8 +121,8 @@ public:
 
         addAllAndMakeVisible (*this,
                               distortionControls, 
-                              ladderControls,
-                              dragArea);
+                              ladderControls
+                              );
 
 
         setSize (1280, 720);
@@ -150,11 +149,8 @@ public:
         distortionControls.setBounds(distortionArea);
         auto ladderArea = rect.removeFromLeft(0.3*getWidth());
         ladderControls.setBounds(ladderArea);
-        dragArea.setBounds(rect);
 
 
-        // forEach ([&] (Component& comp) { comp.setBounds (rect); },
-        //          distortionControls);
     }
 
 private:
@@ -169,8 +165,6 @@ private:
     PlaygroundProcessor& proc;
     DistortionControls  distortionControls  { *this, proc.getParameterValues().distortion };
     LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
-    CmajorStereoDSPEffect::ExtraEditorComponent dragArea {proc.getCmajorDSPEffectProcessor()}; 
-    // CmajorUI::DragArea<juce::AudioProcessorEditor> cmajorDragArea {*this};
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundEditor)

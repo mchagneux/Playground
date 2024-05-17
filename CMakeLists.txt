@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.22)
 project(PLAYGROUND VERSION 0.0.1)
 set (TARGET_NAME ${PROJECT_NAME})
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
 # included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
@@ -25,7 +25,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # add_subdirectory()
 
 
-find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
+add_subdirectory(3rd_party/JUCE7)
+# find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
 
 # If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
@@ -71,7 +72,7 @@ juce_add_plugin(${TARGET_NAME}
 # CMake command.
 
 
-include(../cmajor/tools/scripts/cmake_warning_flags)
+include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
 
 if(NOT CMAJ_VERSION)
     set(CMAJ_VERSION "1.0")
@@ -145,7 +146,7 @@ endif()
 # need that's not on by default, check the module header for the correct flag to set here. These
 # definitions will be visible both to your code, and also the JUCE module code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
-add_subdirectory(../cmajor/modules cmajor)            # If you've put JUCE in a subdirectory called JUCE
+add_subdirectory(3rd_party/cmajor/modules cmajor)            # If you've put JUCE in a subdirectory called JUCE
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC

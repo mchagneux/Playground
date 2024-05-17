@@ -21,16 +21,32 @@ namespace CmajorStereoDSPEffect{
     };  
 
     struct Processor: private juce::MessageListener{
+
+        struct DummyWorkerContext:public cmaj::Patch::WorkerContext{
+
+            void initialise(std::function<void (const choc::value::ValueView &)> sendMessage, std::function<void (const std::string &)> reportError) override {}
+            void sendMessage(const std::string &json, std::function<void (const std::string &)> reportError) override {}
+        };
+
         public: 
 
-            Processor()  //parameters(state) // probably shouldn't take the state as something that can be modified
+
+
+            Processor(): dllLoadedSuccessfully (initialiseDLL())  //parameters(state) // probably shouldn't take the state as something that can be modified
             { 
+
+                if (! dllLoadedSuccessfully)
+                {
+                    setStatusMessage ("Could not load the required Cmajor DLL", true);
+                    return;
+                }
+
 
                 patch = std::make_shared<cmaj::Patch>();
                 patch->setAutoRebuildOnFileChange (true);
                 patch->createEngine = +[] { return cmaj::Engine::create(); };    
-                patch->stopPlayback  = [this] {};//parameters.enabled = false; }; // might need to do a launch async thing
-                patch->startPlayback = [this] {};//parameters.enabled = true; }; // might need to do a launch async thing
+                patch->stopPlayback  = [] {};//parameters.enabled = false; }; // might need to do a launch async thing
+                patch->startPlayback = [] {};//parameters.enabled = true; }; // might need to do a launch async thing
                 patch->patchChanged = [this]
                 {
                     const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
@@ -50,7 +66,10 @@ namespace CmajorStereoDSPEffect{
                 {
                     handleOutputEvent (frame, endpointID, v);
                 };
+                
+                patch->createContextForPatchWorker = []{return std::make_unique<DummyWorkerContext>();};
             }
+
             ~Processor() override
             {
                 patch->patchChanged = [] {};
@@ -62,6 +81,37 @@ namespace CmajorStereoDSPEffect{
             {
                 setNewStateAsync (createEmptyState (fileToLoad));
             }
+
+            void loadPatch (const cmaj::PatchManifest& manifest)
+            {
+                if (dllLoadedSuccessfully)
+                {
+                    cmaj::Patch::LoadParams loadParams;
+                    loadParams.manifest = manifest;
+                    patch->loadPatch (loadParams, false);
+                }
+            }
+
+            bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState)
+            {
+                if (! newState.isValid())
+
+                    return false;
+
+                auto location = newState.getProperty (ids.location).toString().toStdString();
+
+
+                if (location.empty())
+
+                    return false;
+
+                loadParams.manifest.initialiseWithFile (location);
+
+                if (! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile())
+                    readParametersFromState (loadParams, newState);
+                return true;
+            }
+            
 
 
             void setNewStateAsync (juce::ValueTree&& newState)
@@ -90,7 +140,6 @@ namespace CmajorStereoDSPEffect{
 
             void prepare (const dsp::ProcessSpec& spec)
             {
-                
                 applyRateAndBlockSize (spec.sampleRate, static_cast<uint32_t> (spec.maximumBlockSize), static_cast<uint32_t> (spec.numChannels));
 
             }
@@ -108,36 +157,26 @@ namespace CmajorStereoDSPEffect{
                 {
                     return;
                 }
-
-                const auto& inputBlock = context.getInputBlock();
-                auto& outputBlock      = context.getOutputBlock();
-                const auto numInputChannels = inputBlock.getNumChannels();
-                const auto numOutputChannels = outputBlock.getNumChannels();
+                auto&& outputBlock = context.getOutputBlock();
+                const auto numChannels = outputBlock.getNumChannels();
                 const auto numSamples  = outputBlock.getNumSamples();
-
                 auto numFrames = static_cast<choc::buffer::FrameCount> (numSamples);
                 
 
-                const float * inputChannels [numOutputChannels];
-                
-                for (size_t channelNb = 0; channelNb < numOutputChannels; ++channelNb){
-                    inputChannels[channelNb] = inputBlock.getChannelPointer(channelNb);
 
-                } 
-
-                float * outputChannels [numOutputChannels];
+                float * outputChannels [numChannels];
                 
-                for (size_t channelNb = 0; channelNb < numOutputChannels; ++channelNb){
+                for (size_t channelNb = 0; channelNb < numChannels; ++channelNb){
                     outputChannels[channelNb] = outputBlock.getChannelPointer(channelNb);
 
                 } 
                 
-                auto audioInput = choc::buffer::createChannelArrayView (inputChannels, numInputChannels, numSamples);
-                auto audioOutput = choc::buffer::createChannelArrayView (outputChannels, numOutputChannels, numSamples);
+                // auto audioOutput = choc::buffer::createChannelArrayView (outputChannels, numOutputChannels, numSamples);
 
                 choc::span<choc::midi::ShortMessage> midiMessages;
-                patch->process ({audioInput, audioOutput, midiMessages, [&] (uint32_t frame, choc::midi::ShortMessage m){}}, true);
-
+                patch->process(outputChannels, numFrames, [&] (uint32_t frame, choc::midi::ShortMessage m){});
+                // patch->process ({audioInput, audioOutput, midiMessages, [&] (uint32_t frame, choc::midi::ShortMessage m){}}, true);
+// 
             }
 
 
@@ -146,15 +185,54 @@ namespace CmajorStereoDSPEffect{
             std::shared_ptr<cmaj::Patch> patch;
             std::string statusMessage;
             bool isStatusMessageError = false;
-
+            bool dllLoadedSuccessfully = true;
 
 
         // protected: 
 
         private: 
 
+
+
             std::function<void(CmajorStereoDSPEffect::Processor&)> patchChangeCallback;
             std::function<void(const char*)> handleConsoleMessage;
+
+
+            static bool initialiseDLL()
+            {
+                if constexpr (cmaj::Library::isUsingDLL)
+                {
+                    static bool initialised = false;
+
+                    if (initialised)
+                        return true;
+
+                    auto tryLoading = [&] (const juce::File& dll)
+                    {
+                        if (dll.existsAsFile())
+                            initialised = cmaj::Library::initialise (dll.getFullPathName().toStdString());
+
+                        return initialised;
+                    };
+
+                    auto exe = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
+                    auto dllName = cmaj::Library::getDLLName();
+
+                #if CHOC_OSX
+                    auto bundleFolder = juce::File::getSpecialLocation (juce::File::currentApplicationFile);
+
+                    return tryLoading (bundleFolder.getChildFile ("Contents/Resources").getChildFile (dllName))
+                                || tryLoading (exe.getSiblingFile (dllName))
+                                || tryLoading (bundleFolder.getSiblingFile (dllName));
+                #else
+                    return tryLoading (exe.getSiblingFile (dllName));
+                #endif
+                }
+                else
+                {
+                    return true;
+                }
+            }
 
             void handleOutputEvent (uint64_t, std::string_view endpointID, const choc::value::ValueView& value)
             {
@@ -209,25 +287,6 @@ namespace CmajorStereoDSPEffect{
                                 if (auto valProp = param.getPropertyPointer (ids.V))
                                     loadParams.parameterValues[endpointID] = static_cast<float> (*valProp);
             }
-
-            bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState)
-            {
-                if (! newState.isValid())
-                    return false;
-
-                auto location = newState.getProperty (ids.location).toString().toStdString();
-
-                if (location.empty())
-                    return false;
-
-                loadParams.manifest.initialiseWithFile (location);
-
-                if (! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile())
-                    readParametersFromState (loadParams, newState);
-
-                return true;
-            }
-
 
             void setStatusMessage (const std::string& newMessage, bool isError)
             {
@@ -300,8 +359,7 @@ namespace CmajorStereoDSPEffect{
 
                 // if (getSampleRate() > 0)
                 //     applyCurrentRateAndBlockSize();
-
-                patch->loadPatch (loadParams, false);
+                patch->loadPatch (loadParams, true);
             }
 
 
