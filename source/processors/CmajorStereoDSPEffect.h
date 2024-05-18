@@ -30,8 +30,6 @@ namespace CmajorStereoDSPEffect{
 
         public: 
 
-
-
             Processor() //parameters(state) // probably shouldn't take the state as something that can be modified
             { 
 
@@ -173,18 +171,31 @@ namespace CmajorStereoDSPEffect{
 // 
             }
 
-
+            void setOwningMainProc(juce::AudioProcessor * mainProcIn){
+                mainProc = mainProcIn;
+            }
 
 
             std::shared_ptr<cmaj::Patch> patch;
             std::string statusMessage;
             bool isStatusMessageError = false;
 
+            void ensureNumParameters (size_t num)
+            {
+                while (parameters.size() < num)
+                {
+                    Parameter * p = new Parameter ("P" + juce::String (parameters.size()));
+                    parameters.push_back (p);
+                    if (mainProc){
+                        mainProc->addParameter(p);
+                    }
+                }
+            }
 
         // protected: 
 
         private: 
-
+            juce::AudioProcessor *  mainProc = nullptr;
 
 
             std::function<void(CmajorStereoDSPEffect::Processor&)> patchChangeCallback;
@@ -208,16 +219,16 @@ namespace CmajorStereoDSPEffect{
             {
                 auto changes = AudioProcessorListener::ChangeDetails::getDefaultFlags();
 
-                auto newLatency = (int) patch->getFramesLatency();
+                // auto newLatency = (int) patch->getFramesLatency();
 
-                // changes.latencyChanged           = newLatency != getLatencySamples();
-                // changes.parameterInfoChanged     = updateParameters();
-                // changes.programChanged           = false;
-                // changes.nonParameterStateChanged = true;
+                changes.latencyChanged           = false; //newLatency != getLatencySamples();
+                changes.parameterInfoChanged     = updateParameters();
+                changes.programChanged           = false;
+                changes.nonParameterStateChanged = true;
 
                 // setLatencySamples (newLatency);
                 // notifyEditorPatchChanged();
-                // updateHostDisplay (changes);
+                mainProc->updateHostDisplay (changes);
 
                 if (patchChangeCallback)
                     patchChangeCallback (static_cast<CmajorStereoDSPEffect::Processor&> (*this));
@@ -227,6 +238,8 @@ namespace CmajorStereoDSPEffect{
             {
                 juce::ValueTree newState;
             };
+
+
 
             void handleMessage (const juce::Message& message) override
             {
@@ -250,6 +263,7 @@ namespace CmajorStereoDSPEffect{
             {
                 if (statusMessage != newMessage || isStatusMessageError != isError)
                 {
+                    std::cout << newMessage << std::endl;
                     statusMessage = newMessage;
                     isStatusMessageError = isError;
                     // notifyEditorStatusMessageChanged();
@@ -320,6 +334,45 @@ namespace CmajorStereoDSPEffect{
                 patch->loadPatch (loadParams, true);
             }
 
+            juce::ValueTree getUpdatedState()
+            {
+                auto state = createEmptyState (patch->getManifestFile());
+
+                if (isViewResizable() && lastEditorWidth != 0 && lastEditorHeight != 0)
+                {
+                    state.setProperty (ids.viewWidth, lastEditorWidth, nullptr);
+                    state.setProperty (ids.viewHeight, lastEditorHeight, nullptr);
+                }
+
+                if (const auto& values = patch->getStoredStateValues(); ! values.empty())
+                {
+                    juce::ValueTree stateValues (ids.STATE);
+
+                    for (auto& v : values)
+                    {
+                        juce::ValueTree value (ids.VALUE);
+                        value.setProperty (ids.key,   juce::String (v.first.data(),  v.first.length()), nullptr);
+                        auto serialised = v.second.serialise();
+                        value.setProperty (ids.value, juce::var (serialised.data.data(), serialised.data.size()), nullptr);
+                        stateValues.appendChild (value, nullptr);
+                    }
+
+                    state.appendChild (stateValues, nullptr);
+                }
+
+                juce::ValueTree paramList (ids.PARAMS);
+
+                for (auto& p : patch->getParameterList())
+                    paramList.appendChild (juce::ValueTree (ids.PARAM,
+                                                            { { ids.ID, juce::String (p->properties.endpointID) },
+                                                            { ids.V, p->currentValue } }),
+                                        nullptr);
+
+                state.appendChild (paramList, nullptr);
+                return state;
+            }
+            
+
 
             void unload (const std::string& message, bool isError)
             {
@@ -387,6 +440,132 @@ namespace CmajorStereoDSPEffect{
                 jassertfalse;
                 return {};
             }
+
+            struct Parameter  : public juce::AudioProcessorParameter
+            {
+                Parameter (juce::String&& pID)
+                    : juce::AudioProcessorParameter (1),
+                    paramID (std::move (pID))
+                {
+                }
+
+                ~Parameter() override
+                {
+                    detach();
+                }
+
+                bool setPatchParam (cmaj::PatchParameterPtr p)
+                {
+                    if (patchParam == p)
+                        return false;
+
+                    detach();
+                    patchParam = std::move (p);
+
+                    patchParam->valueChanged = [this] (float v)
+                    {
+                        sendValueChangedMessageToListeners (patchParam->properties.convertTo0to1 (v));
+                    };
+
+                    patchParam->gestureStart = [this] { beginChangeGesture(); };
+                    patchParam->gestureEnd   = [this] { endChangeGesture(); };
+                    return true;
+                }
+
+                void detach()
+                {
+                    if (patchParam != nullptr)
+                    {
+                        patchParam->valueChanged = [] (float) {};
+                        patchParam->gestureStart = [] {};
+                        patchParam->gestureEnd   = [] {};
+                    }
+                }
+
+                void forceValueChanged()
+                {
+                    if (patchParam != nullptr)
+                        patchParam->valueChanged (patchParam->currentValue);
+                }
+
+                juce::String getParameterID() const                { return paramID; }
+                juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
+                juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
+                Category getCategory() const override                       { return Category::genericParameter; }
+                bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.discrete; }
+                bool isBoolean() const override                             { return patchParam != nullptr && patchParam->properties.boolean; }
+                bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->properties.automatable; }
+                bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->properties.hidden; }
+
+                juce::StringArray getAllValueStrings() const override
+                {
+                    juce::StringArray result;
+
+                    if (patchParam != nullptr)
+                        for (auto& s : patchParam->properties.valueStrings)
+                            result.add (s);
+
+                    return result;
+                }
+
+                float getDefaultValue() const override       { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.defaultValue) : 0.0f; }
+                float getValue() const override              { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->currentValue) : 0.0f; }
+                void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false, -1, 0); }
+
+                juce::String getText (float v, int length) const override
+                {
+                    if (patchParam == nullptr)
+                        return "0";
+
+                    juce::String result = patchParam->properties.getValueAsString (patchParam->properties.convertFrom0to1 (v));
+                    return length > 0 ? result.substring (0, length) : result;
+                }
+
+                float getValueForText (const juce::String& text) const override
+                {
+                    if (patchParam != nullptr)
+                    {
+                        if (auto value = patchParam->properties.getStringAsValue (text.toStdString()))
+                            return *value;
+
+                        return patchParam->properties.defaultValue;
+                    }
+
+                    return 0;
+                }
+
+                int getNumSteps() const override
+                {
+                    if (patchParam != nullptr)
+                        if (auto steps = patchParam->properties.getNumDiscreteOptions())
+                            return static_cast<int> (steps);
+
+                    return AudioProcessor::getDefaultNumParameterSteps();
+                }
+
+                cmaj::PatchParameterPtr patchParam;
+                const juce::String paramID;
+            };
+
+            void createParameterTree()
+            {
+
+            }
+
+            bool updateParameters()
+            {
+                bool changed = false;
+                auto params = patch->getParameterList();
+
+                ensureNumParameters (params.size());
+
+                for (size_t i = 0; i < params.size(); ++i)
+                    changed = parameters[i]->setPatchParam (params[i]) || changed;
+
+                return changed;
+            }
+
+            std::vector<Parameter*> parameters;
 
             int lastEditorWidth = 0, lastEditorHeight = 0;
 

@@ -89,12 +89,15 @@ private:
           apvts { *this, nullptr, "state", std::move (layout) }
     {
         apvts.state.addListener (this);
+        getCmajorDSPEffectProcessor().setOwningMainProc(this);
+        getCmajorDSPEffectProcessor().ensureNumParameters(100);
     }
     
     std::atomic<bool> requiresUpdate { true };
 
     ParameterReferences parameters; 
     juce::AudioProcessorValueTreeState apvts; 
+
     using Chain = juce::dsp::ProcessorChain<DistortionProcessor, 
                                             dsp::LadderFilter<float>, 
                                             CmajorStereoDSPEffect::Processor>;
