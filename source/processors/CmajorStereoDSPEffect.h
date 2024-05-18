@@ -5,6 +5,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <choc/audio/choc_AudioMIDIBlockDispatcher.h>
+#include <memory>
 
 #include "../Parameters.h"
 using namespace juce;
@@ -188,6 +189,7 @@ namespace CmajorStereoDSPEffect{
                     parameters.push_back (p);
                     if (mainProc){
                         mainProc->addParameter(p);
+                        // mainProc->addListener(AudioProcessorListener *newListener)
                     }
                 }
             }
@@ -444,7 +446,7 @@ namespace CmajorStereoDSPEffect{
             struct Parameter  : public juce::AudioProcessorParameter
             {
                 Parameter (juce::String&& pID)
-                    : juce::AudioProcessorParameter (1),
+                    : juce::AudioProcessorParameter (),
                     paramID (std::move (pID))
                 {
                 }

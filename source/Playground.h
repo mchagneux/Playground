@@ -80,6 +80,11 @@ public:
 
     const ParameterReferences& getParameterValues() const noexcept { return parameters; }
     // CmajorStereoDSPEffect& getCmajorDSP
+
+    // void addParameterToAPVTS(){
+    //     apvts.createAndAddParameter(CmajorStereoDSPEffect::Processor::Par
+    // }
+
 private:
 
     explicit PlaygroundProcessor (AudioProcessorValueTreeState::ParameterLayout layout)
