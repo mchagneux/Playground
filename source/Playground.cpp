@@ -149,6 +149,7 @@ void PlaygroundProcessor::update()
         dsp::setBypassed<ladderIndex> (chain, ! parameters.ladder.enabled);
 
         dsp::setBypassed<cmajorIndex> (chain, ! parameters.cmajor.enabled);
+        dsp::setBypassed<nnEngineIndex> (chain, false);
 
     }
 

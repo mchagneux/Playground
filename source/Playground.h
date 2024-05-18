@@ -9,6 +9,7 @@
 #include "ui/Distortion.h"
 #include "ui/Ladder.h"
 #include "processors/CmajorStereoDSPEffect.h"
+#include "processors/NNEngine.h"
 
 // #include "ui/Cmajor.h"
 
@@ -105,7 +106,8 @@ private:
 
     using Chain = juce::dsp::ProcessorChain<DistortionProcessor, 
                                             dsp::LadderFilter<float>, 
-                                            CmajorStereoDSPEffect::Processor>;
+                                            CmajorStereoDSPEffect::Processor,
+                                            NNEngine>;
 
     Chain chain;
 
@@ -113,7 +115,8 @@ private:
     {
         distortionIndex,
         ladderIndex,
-        cmajorIndex
+        cmajorIndex,
+        nnEngineIndex
     };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundProcessor)

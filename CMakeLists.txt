@@ -18,14 +18,18 @@ project(PLAYGROUND VERSION 0.0.1)
 set (TARGET_NAME ${PROJECT_NAME})
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
 # included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
 # include that subdirectory as part of the build.
 # add_subdirectory()
 
+set(ANIRA_WITH_INSTALL ON)
+add_subdirectory(3rd_party/anira)
 
-add_subdirectory(3rd_party/JUCE7)
+add_subdirectory(3rd_party/JUCE7 EXCLUDE_FROM_ALL)
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
 
@@ -57,6 +61,16 @@ juce_add_plugin(${TARGET_NAME}
                                                 # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
     FORMATS VST3                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
     PRODUCT_NAME ${TARGET_NAME})        # The name of the final executable, which can differ from the target name
+
+
+set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
+set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
+
+target_compile_definitions(${TARGET_NAME}
+    PUBLIC
+    GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+    GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
+)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -185,6 +199,7 @@ target_link_libraries(${TARGET_NAME}
         juce::juce_dsp
         juce::juce_gui_basics
         cmajor_lib
+        anira::anira
         ${CMAKE_DL_LIBS}
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
         ${EXTRA_LIBS}
