@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include "CmajorDragArea.h"
 #include "processors/Ladder.h"
 #include "processors/Distortion.h"
 #include "ui/Distortion.h"
@@ -121,9 +122,8 @@ public:
 
         addAllAndMakeVisible (*this,
                               distortionControls, 
-                              ladderControls
-                              );
-
+                              ladderControls,
+                              cmajorControls);
 
         setSize (1280, 720);
         setResizable (true, true);
@@ -144,11 +144,11 @@ public:
     void resized() override
     {
         auto rect = getLocalBounds();
-
-        auto distortionArea = rect.removeFromLeft(0.3*getWidth());
+        auto distortionArea = rect.removeFromLeft(0.5*getWidth());
         distortionControls.setBounds(distortionArea);
-        auto ladderArea = rect.removeFromLeft(0.3*getWidth());
+        auto ladderArea = rect.removeFromLeft(0.4*getWidth());
         ladderControls.setBounds(ladderArea);
+        cmajorControls.setBounds(rect);
 
 
     }
@@ -165,7 +165,8 @@ private:
     PlaygroundProcessor& proc;
     DistortionControls  distortionControls  { *this, proc.getParameterValues().distortion };
     LadderControls      ladderControls      { *this, proc.getParameterValues().ladder };
-
+    CmajorControls cmajorControls {proc.getCmajorDSPEffectProcessor()};
+    // CmajorStereoDSPEffect::Parameters cmajorcontrols {*this, proc.getParameterValues().cmajor};
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PlaygroundEditor)
 };

@@ -88,8 +88,6 @@ void PlaygroundProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     if (channels == 0)
         return;
     
-    getCmajorDSPEffectProcessor().loadPatch("/home/mathis/audio_dev/AudioPlugin/ZitaReverb/ZitaReverb.cmajorpatch");
-
     chain.prepare ({ sampleRate, (uint32) samplesPerBlock, (uint32) channels });
 
     reset();

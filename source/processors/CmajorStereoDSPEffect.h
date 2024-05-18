@@ -15,7 +15,7 @@ namespace CmajorStereoDSPEffect{
         explicit Parameters (AudioProcessorParameterGroup& layout): enabled (addToLayout<AudioParameterBool> (layout,
                                                         ParameterID { ID::cmajorEnabled, 1 },
                                                         "Cmajor",
-                                                        true)) {}
+                                                        false)) {}
         AudioParameterBool& enabled;
 
     };  
@@ -32,15 +32,8 @@ namespace CmajorStereoDSPEffect{
 
 
 
-            Processor(): dllLoadedSuccessfully (initialiseDLL())  //parameters(state) // probably shouldn't take the state as something that can be modified
+            Processor() //parameters(state) // probably shouldn't take the state as something that can be modified
             { 
-
-                if (! dllLoadedSuccessfully)
-                {
-                    setStatusMessage ("Could not load the required Cmajor DLL", true);
-                    return;
-                }
-
 
                 patch = std::make_shared<cmaj::Patch>();
                 patch->setAutoRebuildOnFileChange (true);
@@ -84,31 +77,32 @@ namespace CmajorStereoDSPEffect{
 
             void loadPatch (const cmaj::PatchManifest& manifest)
             {
-                if (dllLoadedSuccessfully)
-                {
-                    cmaj::Patch::LoadParams loadParams;
-                    loadParams.manifest = manifest;
-                    patch->loadPatch (loadParams, false);
-                }
+
+                cmaj::Patch::LoadParams loadParams;
+                loadParams.manifest = manifest;
+                patch->loadPatch (loadParams, false);
             }
 
             bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState)
             {
-                if (! newState.isValid())
+                if (! newState.isValid()){
 
                     return false;
+                }
 
                 auto location = newState.getProperty (ids.location).toString().toStdString();
 
 
-                if (location.empty())
-
+                if (location.empty()){
                     return false;
+                }
 
                 loadParams.manifest.initialiseWithFile (location);
 
-                if (! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile())
+                if (! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile()){
                     readParametersFromState (loadParams, newState);
+                }
+
                 return true;
             }
             
@@ -185,7 +179,6 @@ namespace CmajorStereoDSPEffect{
             std::shared_ptr<cmaj::Patch> patch;
             std::string statusMessage;
             bool isStatusMessageError = false;
-            bool dllLoadedSuccessfully = true;
 
 
         // protected: 
@@ -197,42 +190,6 @@ namespace CmajorStereoDSPEffect{
             std::function<void(CmajorStereoDSPEffect::Processor&)> patchChangeCallback;
             std::function<void(const char*)> handleConsoleMessage;
 
-
-            static bool initialiseDLL()
-            {
-                if constexpr (cmaj::Library::isUsingDLL)
-                {
-                    static bool initialised = false;
-
-                    if (initialised)
-                        return true;
-
-                    auto tryLoading = [&] (const juce::File& dll)
-                    {
-                        if (dll.existsAsFile())
-                            initialised = cmaj::Library::initialise (dll.getFullPathName().toStdString());
-
-                        return initialised;
-                    };
-
-                    auto exe = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
-                    auto dllName = cmaj::Library::getDLLName();
-
-                #if CHOC_OSX
-                    auto bundleFolder = juce::File::getSpecialLocation (juce::File::currentApplicationFile);
-
-                    return tryLoading (bundleFolder.getChildFile ("Contents/Resources").getChildFile (dllName))
-                                || tryLoading (exe.getSiblingFile (dllName))
-                                || tryLoading (bundleFolder.getSiblingFile (dllName));
-                #else
-                    return tryLoading (exe.getSiblingFile (dllName));
-                #endif
-                }
-                else
-                {
-                    return true;
-                }
-            }
 
             void handleOutputEvent (uint64_t, std::string_view endpointID, const choc::value::ValueView& value)
             {
@@ -249,9 +206,9 @@ namespace CmajorStereoDSPEffect{
 
             void handlePatchChange()
             {
-                // auto changes = AudioProcessorListener::ChangeDetails::getDefaultFlags();
+                auto changes = AudioProcessorListener::ChangeDetails::getDefaultFlags();
 
-                // auto newLatency = (int) patch->getFramesLatency();
+                auto newLatency = (int) patch->getFramesLatency();
 
                 // changes.latencyChanged           = newLatency != getLatencySamples();
                 // changes.parameterInfoChanged     = updateParameters();
@@ -273,8 +230,9 @@ namespace CmajorStereoDSPEffect{
 
             void handleMessage (const juce::Message& message) override
             {
-                if (auto m = dynamic_cast<const NewStateMessage*> (&message))
+                if (auto m = dynamic_cast<const NewStateMessage*> (&message)){
                     setNewState (const_cast<NewStateMessage*> (m)->newState);
+                }
             }
 
 
@@ -429,8 +387,6 @@ namespace CmajorStereoDSPEffect{
                 jassertfalse;
                 return {};
             }
-
-            // std::shared_ptr<cmaj::Patch> patch;
 
             int lastEditorWidth = 0, lastEditorHeight = 0;
 
