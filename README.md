@@ -5,7 +5,9 @@
 - [x] Write a component that embeds the Cmajor engine and can be used to hot reload components. Check whether it can be included in the chain dynamically. If not, use the audiograph.
     - [ ] Add the parameters in a cleaner way to the tree and the APVTS similarly to the rest of the chain.
     - [ ] Check that file changes work.
-- [ ] Add something that involves a neural network (preferably using libtorch). Use/imitate things from TU Studio for this.
+- [x] Add something that involves a neural network (preferably using libtorch). Use/imitate things from TU Studio for this.
+    - [ ] Find a way to have parameters being loaded into the plugin correctly. 
+    
 
 
 

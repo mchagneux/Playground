@@ -69,11 +69,13 @@ public:
         explicit ParameterReferences (AudioProcessorValueTreeState::ParameterLayout& layout)
             :  distortion    (addToLayout<AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")),
             ladder        (addToLayout<AudioProcessorParameterGroup> (layout, "ladder",        "Ladder",        "|")),
-            cmajor (addToLayout<AudioProcessorParameterGroup> (layout, "cmajor",        "Cmajor",        "|")) {}
+            cmajor (addToLayout<AudioProcessorParameterGroup> (layout, "cmajor",        "Cmajor",        "|")),
+            nnEngine (addToLayout<AudioProcessorParameterGroup> (layout, "nnEngine",        "Neural Network",        "|")) {}
         
         DistortionProcessor::Parameters distortion;
         LadderProcessor::Parameters ladder;
         CmajorStereoDSPEffect::Parameters cmajor;
+        NNEngine::Parameters nnEngine; 
 
     };
 

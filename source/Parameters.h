@@ -146,6 +146,9 @@ namespace ID
     PARAMETER_ID (ladderDrive)
     PARAMETER_ID (ladderMode)
     PARAMETER_ID (cmajorEnabled)
+    PARAMETER_ID(nnEnabled)
+    PARAMETER_ID(nnBackend)
+    PARAMETER_ID(nnMix)
 
 
    #undef PARAMETER_ID

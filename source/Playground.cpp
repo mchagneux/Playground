@@ -149,7 +149,12 @@ void PlaygroundProcessor::update()
         dsp::setBypassed<ladderIndex> (chain, ! parameters.ladder.enabled);
 
         dsp::setBypassed<cmajorIndex> (chain, ! parameters.cmajor.enabled);
-        dsp::setBypassed<nnEngineIndex> (chain, false);
+
+        NNEngine& nnEngine = dsp::get<nnEngineIndex> (chain);
+
+        nnEngine.dryWetMixer.setWetMixProportion (parameters.nnEngine.mix.get() / 100.0f);
+        
+        dsp::setBypassed<nnEngineIndex> (chain, ! parameters.nnEngine.enabled);
 
     }
 
@@ -206,7 +211,9 @@ void PlaygroundProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const auto totalNumInputChannels  = getTotalNumInputChannels();
     const auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    setLatencySamples (dsp::isBypassed<distortionIndex> (chain) ? 0 : roundToInt (dsp::get<distortionIndex> (chain).getLatency()));
+    auto latencyDist  = dsp::isBypassed<distortionIndex> (chain) ? 0 : roundToInt (dsp::get<distortionIndex> (chain).getLatency());
+    auto latencyNN = dsp::isBypassed<nnEngineIndex> (chain) ? 0 : roundToInt (dsp::get<nnEngineIndex> (chain).getLatency()); 
+    setLatencySamples (latencyDist + latencyNN);
 
     const auto numChannels = jmax (totalNumInputChannels, totalNumOutputChannels);
 
@@ -235,5 +242,5 @@ void PlaygroundProcessor::setStateInformation (const void* data, int sizeInBytes
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new Playground();
+    return new PlaygroundProcessor();
 }
