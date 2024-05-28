@@ -1,4 +1,5 @@
 #include "Playground.h"
+#include "anira/utils/InferenceBackend.h"
 
 
 //==============================================================================
@@ -151,6 +152,18 @@ void PlaygroundProcessor::update()
         dsp::setBypassed<cmajorIndex> (chain, ! parameters.cmajor.enabled);
 
         NNEngine& nnEngine = dsp::get<nnEngineIndex> (chain);
+        nnEngine.setBackend([&]{
+            switch (parameters.nnEngine.type.getIndex())
+                {
+                    case 0: return anira::LIBTORCH;
+                    case 1: return anira::ONNX;
+                    case 2: return anira::TFLITE;
+                    default: break;
+                }
+                return anira::LIBTORCH;
+            }()
+        );
+
 
         nnEngine.dryWetMixer.setWetMixProportion (parameters.nnEngine.mix.get() / 100.0f);
         
@@ -242,5 +255,5 @@ void PlaygroundProcessor::setStateInformation (const void* data, int sizeInBytes
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new PlaygroundProcessor();
+    return new Playground();
 }

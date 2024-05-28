@@ -98,7 +98,12 @@ struct NNEngine{
 
 
 
-    NNEngine(): inferenceHandler(prePostProcessor, inferenceConfig) {}
+    NNEngine(): inferenceHandler(prePostProcessor, inferenceConfig), dryWetMixer(32768) {}
+
+    void setBackend(anira::InferenceBackend backend){
+
+        inferenceHandler.setInferenceBackend(backend); // TODO: asynchronous call on the message queue
+    }
 
     int getLatency(){
         return inferenceHandler.getLatency();
@@ -120,9 +125,8 @@ struct NNEngine{
         monoBuffer.setSize(1, spec.maximumBlockSize);
         inferenceHandler.prepare(monoConfig);
 
-        latencySamples = getLatency();
-        dryWetMixer.setWetLatency(latencySamples);
-        inferenceHandler.setInferenceBackend(anira::LIBTORCH);
+        dryWetMixer.setWetLatency(getLatency());
+        // inferenceHandler.setInferenceBackend(anira::LIBTORCH);
         // for (auto & parameterID : PluginParameters::getPluginParameterList()) {
         //     parameterChanged(parameterID, (float) parameters.getParameterAsValue(parameterID).getValue());
         // }
@@ -134,7 +138,7 @@ struct NNEngine{
         // return;
         if (context.isBypassed)
             return;
-        
+
         auto&& inputBlock = context.getInputBlock();
         auto&& outputBlock = context.getOutputBlock();
 
@@ -192,7 +196,6 @@ struct NNEngine{
     anira::InferenceConfig inferenceConfig = hybridNNConfig;
     HybridNNPrePostProcessor prePostProcessor;
     anira::InferenceHandler inferenceHandler;
-    int latencySamples; 
     juce::dsp::DryWetMixer<float> dryWetMixer;
 
 //==============================================================================

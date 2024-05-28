@@ -3,7 +3,8 @@
 
 - [x] Make a static layout, but make sure that everything is defined such that each block of the VST could be hosted in separated plugins. In particular each sub-component should hold its own state, which are added to the main state after. 
 - [x] Write a component that embeds the Cmajor engine and can be used to hot reload components. Check whether it can be included in the chain dynamically. If not, use the audiograph.
-    - [ ] Add the parameters in a cleaner way to the tree and the APVTS similarly to the rest of the chain.
+    - [x] Add the parameters in a cleaner way to the tree and the APVTS similarly to the rest of the chain.
+        - Almost done but parameters have not been added as RangedAudioParameters which needs to be changed.
     - [ ] Check that file changes work.
 - [x] Add something that involves a neural network (preferably using libtorch). Use/imitate things from TU Studio for this.
     - [ ] Find a way to have parameters being loaded into the plugin correctly. 
