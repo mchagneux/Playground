@@ -71,8 +71,6 @@ static auto getBasicAttributes()
                         .withValueFromStringFunction (textToValueFunction);
 }
 
-static auto getDbAttributes()           { return getBasicAttributes().withLabel ("dB"); }
-static auto getMsAttributes()           { return getBasicAttributes().withLabel ("ms"); }
 static auto getHzAttributes()           { return getBasicAttributes().withLabel ("Hz"); }
 static auto getPercentageAttributes()   { return getBasicAttributes().withLabel ("%"); }
 static auto getRatioAttributes()        { return getBasicAttributes().withLabel (":1"); }

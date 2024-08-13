@@ -59,10 +59,6 @@ public:
   void update();
   void reset() override;
 
-  // void initialiseGraph();
-  // void updateGraph();
-  // void connectAudioNodes();
-
   struct ParameterReferences {
     explicit ParameterReferences(
         AudioProcessorValueTreeState::ParameterLayout &layout)
@@ -93,13 +89,6 @@ public:
     return updateFn(parameters.cmajor);//updateFn(paramNb); // parameters[i]->setPatchParam(params[i]) || changed;
   }
 
-
-  // CmajorStereoDSPEffect::Processor::CmajorParameter&
-  // CmajorStereoDSPEffect& getCmajorDSP
-
-  // void addParameterToAPVTS(){
-  //     apvts.createAndAddParameter(CmajorStereoDSPEffect::Processor::Par
-  // }
 
 private:
   explicit PlaygroundProcessor(
@@ -146,14 +135,6 @@ public:
   }
 
   //==============================================================================
-  void paint(Graphics &g) override {
-    // auto rect = getLocalBounds();
-
-    // auto currentBound = getBounds();
-
-    // g.setColour (getLookAndFeel().findColour
-    // (ResizableWindow::backgroundColourId)); g.fillRect (currentBound);
-  }
 
   void resized() override {
     auto rect = getLocalBounds();
@@ -165,11 +146,6 @@ public:
   }
 
 private:
-  //==============================================================================
-  // static constexpr auto topSize    = 40,
-  //                       bottomSize = 40,
-  //                       midSize    = 40,
-  //                       tabSize    = 155;
 
   //==============================================================================
   PlaygroundProcessor &proc;
@@ -177,8 +153,6 @@ private:
                                         proc.getParameterValues().distortion};
   LadderControls ladderControls{*this, proc.getParameterValues().ladder};
   CmajorControls cmajorControls{proc.getCmajorDSPEffectProcessor()};
-  // CmajorStereoDSPEffect::Parameters cmajorcontrols {*this,
-  // proc.getParameterValues().cmajor};
   //==============================================================================
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlaygroundEditor)
 };

@@ -32,8 +32,7 @@ struct Processor : private juce::MessageListener {
     patch->createEngine = +[] { return cmaj::Engine::create(); };
     patch->stopPlayback = [] {}; // parameters.enabled = false; }; // might need
                                  // to do a launch async thing
-    patch->startPlayback = [] {
-    }; // parameters.enabled = true; }; // might need to do a launch async thing
+    patch->startPlayback = [] {}; // parameters.enabled = true; }; // might need to do a launch async thing
     patch->patchChanged = [this] {
       const auto executeOrDeferToMessageThread = [](auto &&fn) -> void {
         if (juce::MessageManager::getInstance()->isThisTheMessageThread())

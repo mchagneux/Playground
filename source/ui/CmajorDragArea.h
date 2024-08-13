@@ -58,7 +58,6 @@ struct CmajorControls: public juce::Component{
         });
     }
 
-    
 
     private:
         CmajorStereoDSPEffect::Processor& cmajorProc;
