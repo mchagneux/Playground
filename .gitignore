@@ -1,5 +1,2 @@
 .cache
 build/
-/*.h
-3rd_party
-ZitaReverb
