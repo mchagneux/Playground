@@ -14,24 +14,51 @@ cmake_minimum_required(VERSION 3.22)
 # `project()` command. `project()` sets up some helpful variables that describe source/binary
 # directories, and the current project version. This is a standard CMake command.
 
-project(PLAYGROUND VERSION 0.0.1)
+project(Playground VERSION 0.0.1)
 set (TARGET_NAME ${PROJECT_NAME})
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
 # included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
 # include that subdirectory as part of the build.
-# add_subdirectory()
 
-set(ANIRA_WITH_INSTALL ON)
-add_subdirectory(3rd_party/anira)
+if(NOT CMAJ_VERSION)
+    # Determine the version - use the latest tag for the checkout out repo
+    set(CMAJ_VERSION "1.0")
+    find_package (Git)
 
-add_subdirectory(3rd_party/JUCE7 EXCLUDE_FROM_ALL)
+    if (GIT_FOUND)
+        execute_process (
+            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/cmajor"
+            RESULT_VARIABLE GIT_RESULT
+            OUTPUT_VARIABLE GIT_STDOUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        if (GIT_RESULT EQUAL 0)
+            set(CMAJ_VERSION ${GIT_STDOUT})
+        endif()
+    endif()
+
+    message ("Setting CMAJ_VERSION to ${CMAJ_VERSION}")
+endif()
+
+
+if(NOT CMAJ_TARGET_COMPILER)
+    set(CMAJ_TARGET_COMPILER
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
+        $<$<CXX_COMPILER_ID:GNU>:cxx_std_17>
+        $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
+    )
+endif()
+
+add_subdirectory(3rd_party/cmajor/modules)
+add_subdirectory(3rd_party/cmajor/modules/plugin cmaj_plugin_wrappers)
+
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
+add_subdirectory(3rd_party/JUCE)                    # If you've put JUCE in a subdirectory called JUCE
 
 # If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
 # system. This setup should be done before calling `juce_add_plugin`.
@@ -40,37 +67,28 @@ add_subdirectory(3rd_party/JUCE7 EXCLUDE_FROM_ALL)
 # juce_set_aax_sdk_path(...)
 
 # `juce_add_plugin` adds a static library target with the name passed as the first argument
-# (AudioPluginExample here). This target is a normal CMake target, but has a lot of extra properties set
+# (${TARGET_NAME} here). This target is a normal CMake target, but has a lot of extra properties set
 # up by default. As well as this shared code static library, this function adds targets for each of
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
+
 
 juce_add_plugin(${TARGET_NAME}
     # VERSION ...                               # Set this if the plugin version is different to the project version
     # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
     # ICON_SMALL ...
-    COMPANY_NAME RMST                          # Specify the name of the plugin's author
-    IS_SYNTH FALSE                       # Is this a synth or an effect?
-    NEEDS_MIDI_INPUT FALSE               # Does the plugin need midi input?
-    NEEDS_MIDI_OUTPUT FALSE              # Does the plugin need midi output?
-    IS_MIDI_EFFECT FALSE                 # Is this plugin a MIDI effect?
+    # COMPANY_NAME ...                          # Specify the name of the plugin's author
+    IS_SYNTH TRUE                       # Is this a synth or an effect?
+    NEEDS_MIDI_INPUT TRUE               # Does the plugin need midi input?
+    NEEDS_MIDI_OUTPUT TRUE             # Does the plugin need midi output?
+    # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
     # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
-    COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
+    # COPY_PLUGIN_AFTER_BUILD TRUE/FALSE        # Should the plugin be installed to a default location after building?
     PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
     PLUGIN_CODE Dem0                            # A unique four-character plugin id with exactly one upper-case character
-                                                # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
-    FORMATS VST3                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-    PRODUCT_NAME ${TARGET_NAME})        # The name of the final executable, which can differ from the target name
-
-
-set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
-set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
-
-target_compile_definitions(${TARGET_NAME}
-    PUBLIC
-    GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-    GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
-)
+    NEEDS_WEB_BROWSER TRUE                                         # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
+    FORMATS Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+    PRODUCT_NAME "Audio Plugin Example")        # The name of the final executable, which can differ from the target name
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -85,40 +103,37 @@ target_compile_definitions(${TARGET_NAME}
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
 
+target_compile_features(${TARGET_NAME} PRIVATE ${CMAJ_TARGET_COMPILER})
+target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
 
-include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
-
-if(NOT CMAJ_VERSION)
-    set(CMAJ_VERSION "1.0")
-    message ("Defaulting CMAJ_VERSION to ${CMAJ_VERSION}")
-endif()
-
-if(NOT CMAJ_TARGET_COMPILER)
-    set(CMAJ_TARGET_COMPILER
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
-        $<$<CXX_COMPILER_ID:GNU>:cxx_std_17>
-        $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
-    )
-endif()
+add_compile_definitions (
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
+    CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
+)
+    # JUCE_DISABLE_JUCE_VERSION_PRINTING=1
+    # JUCE_VST3_CAN_REPLACE_VST2=0
+    # JUCE_USE_CURL=0
+# )
 
 
+add_subdirectory(3rd_party/cmajor/modules cmajor)
 
-# MAKE_CMAJ_LIBRARY()
-# Try to find the Cmajor library
-# find_library(CMAJOR NAMES libCmajPerformer.so PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../cmajor/build/tools/CmajDLL" REQUIRED)
+MAKE_CMAJ_LIBRARY (
+    LIBRARY_NAME cmajor_lib
+    INCLUDE_PLAYBACK
+    ENABLE_PERFORMER_LLVM
+)
 
-# Library found, include the CMajor API headers
-# target_include_directories(${TARGET_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../cmajor/include")
 
 # Add all source files to file list
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/source/*.h)
-# list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_LIST_DIR}/source/ui/CustomComponents/OpenGLBackground/OpenGLUtil/OpenGLUtil.h)
 
 
-# Add all sources to target
 target_sources(${TARGET_NAME} PRIVATE ${SOURCES})# ${RNBO_SOURCES})
 
-# Add include directories for all folders in the source<
+
+# Add include directories for all folders in the source
 file(GLOB_RECURSE source_dirs LIST_DIRECTORIES true ${CMAKE_CURRENT_LIST_DIR}/source/*)
 
 foreach (dir ${source_dirs})
@@ -127,32 +142,24 @@ foreach (dir ${source_dirs})
     endif ()
 endforeach ()
 
-# target_include_directories(${TARGET_NAME} PRIVATE /home/mathis/audio_dev/cmajor/include/cmajor)
+target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/cmajor)
+target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/choc)
+
+
+
+# if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+#     find_package(PkgConfig REQUIRED)
+#     pkg_check_modules (gtk3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
+#     pkg_check_modules (webkit2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+#     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
+#     target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
+
+#     # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
+# endif ()
 
 
 # Make the folder structure visible in the IDE
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX "source" FILES ${SOURCES})
-
-
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
-    target_include_directories (${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
-    target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
-
-    if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
-        target_link_libraries (${TARGET_NAME} PUBLIC atomic)
-    endif()
-
-    set (EXTRA_LIBS dl ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES} "-pthread" "-lasound")
-endif()
-
-# target_sources(AudioPluginExample
-#     PRIVATE
-#         PluginEditor.cpp
-#         PluginProcessor.cpp)
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use
@@ -160,15 +167,14 @@ endif()
 # need that's not on by default, check the module header for the correct flag to set here. These
 # definitions will be visible both to your code, and also the JUCE module code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
-add_subdirectory(3rd_party/cmajor/modules cmajor)            # If you've put JUCE in a subdirectory called JUCE
+
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
         JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
         JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-        JUCE_VST3_CAN_REPLACE_VST2=0
-        )
+        JUCE_VST3_CAN_REPLACE_VST2=0)
 
 # If your target needs extra binary assets, you can add them here. The first argument is the name of
 # a new static library target that will include all the binary resources. There is an optional
@@ -185,24 +191,12 @@ target_compile_definitions(${TARGET_NAME}
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
-
-MAKE_CMAJ_LIBRARY (
-    LIBRARY_NAME cmajor_lib
-    INCLUDE_PLAYBACK
-    ENABLE_PERFORMER_LLVM
-)
-
 target_link_libraries(${TARGET_NAME}
     PRIVATE
         # AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
-        juce::juce_dsp
-        juce::juce_gui_basics
         cmajor_lib
-        anira::anira
-        ${CMAKE_DL_LIBS}
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
-        ${EXTRA_LIBS}
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
