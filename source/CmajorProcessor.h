@@ -191,7 +191,7 @@ public:
         return s;
     }
 
-    juce::AudioProcessorEditor* createEditor() override   { return nullptr; } //new Editor (static_cast<DerivedType&> (*this)); }
+    juce::AudioProcessorEditor* createEditor() override   { return nullptr; } // new Editor (static_cast<CmajorProcessor&> (*this)); }
     bool hasEditor() const override                       { return false; }
 
     bool acceptsMidi() const override                     { return patch->hasMIDIInput() || ! patch->isLoaded(); }
@@ -923,101 +923,6 @@ protected:
 
     std::vector<Parameter*> parameters;
 
-    struct ExtraEditorComponent  : public juce::Component,
-                                   public juce::FileDragAndDropTarget
-    {
-        ExtraEditorComponent (CmajorProcessor& p) : plugin (p)
-        {
-            messageBox.setMultiLine (true);
-            messageBox.setReadOnly (true);
-
-            unloadButton.onClick = [this] { plugin.unload(); };
-
-            addAndMakeVisible (messageBox);
-            addAndMakeVisible (unloadButton);
-        }
-
-        void resized() override
-        {
-            auto r = getLocalBounds().reduced (4);
-            messageBox.setBounds (r);
-            unloadButton.setBounds (r.removeFromTop (30).removeFromRight (80));
-        }
-
-        void refresh()
-        {
-            unloadButton.setVisible (plugin.patch->isLoaded());
-
-           #if JUCE_MAJOR_VERSION == 8
-            juce::Font f (juce::FontOptions (18.0f));
-           #else
-            juce::Font f (18.0f);
-           #endif
-
-            f.setTypefaceName (juce::Font::getDefaultMonospacedFontName());
-            messageBox.setFont (f);
-
-            auto text = plugin.statusMessage;
-
-            if (text.empty())
-                text = "Drag-and-drop a .cmajorpatch file here to load it";
-
-            messageBox.setText (text);
-        }
-
-        void paintOverChildren (juce::Graphics& g) override
-        {
-            if (isDragOver)
-                g.fillAll (juce::Colours::lightgreen.withAlpha (0.3f));
-        }
-
-        bool isInterestedInFileDrag (const juce::StringArray& files) override
-        {
-            return files.size() == 1 && files[0].endsWith (".cmajorpatch");
-        }
-
-        void fileDragEnter (const juce::StringArray&, int, int) override       { setDragOver (true); }
-        void fileDragExit (const juce::StringArray&) override                  { setDragOver (false); }
-
-        void filesDropped (const juce::StringArray& files, int, int) override
-        {
-            setDragOver (false);
-
-            if (isInterestedInFileDrag (files))
-                plugin.loadPatch (files[0].toStdString());
-        }
-
-        void setDragOver (bool b)
-        {
-            if (isDragOver != b)
-            {
-                isDragOver = b;
-                repaint();
-            }
-        }
-
-        //==============================================================================
-        CmajorProcessor& plugin;
-        bool isDragOver = false;
-
-        juce::TextEditor messageBox;
-        juce::TextButton unloadButton { "Unload" };
-
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ExtraEditorComponent)
-    };
-
-    static constexpr int extraCompHeight = 50;
-
-    std::unique_ptr<ExtraEditorComponent> createExtraComponent()
-    {
-        return std::make_unique<ExtraEditorComponent> (*this);
-    }
-
-    void refreshExtraComp (juce::Component* c)
-    {
-        if (auto v = dynamic_cast<ExtraEditorComponent*> (c))
-            v->refresh();
-    }
 
     struct Editor  : public juce::AudioProcessorEditor
     {
@@ -1034,12 +939,12 @@ protected:
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
             setLookAndFeel (&lookAndFeel);
 
-            extraComp = owner.createExtraComponent();
+            // extraComp = owner.createExtraComponent();
 
             onPatchChanged (false);
 
-            if (extraComp)
-                addAndMakeVisible (*extraComp);
+            // if (extraComp)
+                // addAndMakeVisible (*extraComp);
 
             statusMessageChanged();
 
@@ -1056,7 +961,7 @@ protected:
 
         void statusMessageChanged()
         {
-            owner.refreshExtraComp (extraComp.get());
+            // owner.refreshExtraComp (extraComp.get());
             patchWebView->setStatusMessage (owner.statusMessage);
         }
 
@@ -1110,7 +1015,7 @@ protected:
         {
             if (! isResizing && patchWebViewHolder->isVisible())
                 setSize (std::max (50, patchWebViewHolder->getWidth()),
-                         std::max (50, patchWebViewHolder->getHeight() + CmajorProcessor::extraCompHeight));
+                         std::max (50, patchWebViewHolder->getHeight()));// + CmajorProcessor::extraCompHeight));
         }
 
         void resized() override
@@ -1122,7 +1027,7 @@ protected:
 
             if (patchWebViewHolder->isVisible())
             {
-                patchWebViewHolder->setBounds (r.removeFromTop (getHeight() - CmajorProcessor::extraCompHeight));
+                patchWebViewHolder->setBounds (r.removeFromTop (getHeight()));// - DerivedType::extraCompHeight));
                 r.removeFromTop (4);
 
                 if (getWidth() > 0 && getHeight() > 0)
@@ -1132,8 +1037,8 @@ protected:
                 }
             }
 
-            if (extraComp)
-                extraComp->setBounds (r);
+            // if (extraComp)
+            //     extraComp->setBounds (r);
 
             isResizing = false;
         }
@@ -1147,7 +1052,7 @@ protected:
         CmajorProcessor& owner;
 
         std::unique_ptr<cmaj::PatchWebView> patchWebView;
-        std::unique_ptr<juce::Component> patchWebViewHolder, extraComp;
+        std::unique_ptr<juce::Component> patchWebViewHolder;//, extraComp;
 
         juce::LookAndFeel_V4 lookAndFeel;
         bool isResizing = false;

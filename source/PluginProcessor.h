@@ -2,7 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "CmajorProcessor.h"
-
+#include "CmajorLoaderUI.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -44,9 +44,12 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-private:
+    CmajorProcessor& getCmajorProcessor(){
+        return *cmajorProcessor; 
+    }
 
-    std::unique_ptr<CmajorProcessor> cmajorProcesor;  
+private:
+    std::unique_ptr<CmajorProcessor> cmajorProcessor;  
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
