@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "juce_events/juce_events.h"
 #include <JuceHeader.h>
 
 #if JUCE_LINUX
@@ -67,9 +68,11 @@ struct DummyWorkerContext : public cmaj::Patch::WorkerContext {
 
 
 class CmajorProcessor  : public juce::AudioProcessor,
-                        private juce::MessageListener
+                        private juce::MessageListener,
+                        public juce::ChangeBroadcaster
 {
 public:
+    bool editorsShouldUpdatePatch = false, editorsShouldUpdateMessage = false; 
     int lastEditorWidth = 0, lastEditorHeight = 0;
 
     CmajorProcessor (BusesProperties buses)
@@ -409,12 +412,16 @@ protected:
 
     void notifyEditorStatusMessageChanged()
     {
+        editorsShouldUpdateMessage = true;
+        sendSynchronousChangeMessage();
         // if (auto e = dynamic_cast<CmajorComponent*> (getActiveEditor()))
         //     e->statusMessageChanged();
     }
 
     void notifyEditorPatchChanged()
     {
+        editorsShouldUpdatePatch = true;
+        sendSynchronousChangeMessage();
         // if (auto* e = dynamic_cast<CmajorComponent*> (getActiveEditor()))
         //     e->onPatchChanged();
     }
@@ -872,12 +879,16 @@ protected:
 };
 
 
-struct CmajorComponent : public juce::Component
+struct CmajorComponent : public juce::Component, 
+                        public juce::ChangeListener
 
 {
     CmajorComponent (CmajorProcessor& p): owner (p),
             patchWebView (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
     {
+
+        owner.addChangeListener(this);
+
         patchWebViewHolder = choc::ui::createJUCEWebViewHolder (patchWebView->getWebView());
         patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
 
@@ -905,6 +916,18 @@ struct CmajorComponent : public juce::Component
         // setLookAndFeel (nullptr);
         patchWebViewHolder.reset();
         patchWebView.reset();
+        owner.removeChangeListener(this);
+    }
+
+    void changeListenerCallback (juce::ChangeBroadcaster * source) override {
+        if (source == &owner){
+            if (owner.editorsShouldUpdatePatch) {
+                onPatchChanged();
+            }
+            else if (owner.editorsShouldUpdateMessage){
+                statusMessageChanged();
+            }
+        };
     }
 
     void statusMessageChanged()

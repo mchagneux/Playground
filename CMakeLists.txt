@@ -76,9 +76,9 @@ juce_add_plugin(${TARGET_NAME}
     COMPANY_COPYRIGHT ""
     PLUGIN_CODE Cmaj
     FORMATS Standalone
-    NEEDS_MIDI_INPUT TRUE
-    NEEDS_MIDI_OUTPUT TRUE
-    NEEDS_WEB_BROWSER FALSE
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE
     MICROPHONE_PERMISSION_ENABLED TRUE
 )        # The name of the final executable, which can differ from the target name
 
