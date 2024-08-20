@@ -57,7 +57,6 @@ public:
         {
             auto filename = fc.getResult().getFullPathName();
             if (isValidFile(filename)) {
-                std::cout << filename << std::endl;
                 cmajorProcessor.loadPatch (filename.toStdString());
             }
 

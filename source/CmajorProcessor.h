@@ -273,6 +273,7 @@ public:
     {
         if (! patch->isPlayable() || isSuspended())
         {
+            std::cout << "Patch not playable" << std::endl;
             audio.clear();
             midi.clear();
             return;
@@ -988,6 +989,12 @@ struct CmajorComponent : public juce::Component,
             setSize (std::max (50, patchWebViewHolder->getWidth()),
                         std::max (50, patchWebViewHolder->getHeight()));// + CmajorProcessor::extraCompHeight));
     }
+
+    void paint(juce::Graphics& g) override 
+    {
+        g.fillAll (juce::Colours::white);
+    }
+
 
     void resized() override
     {
