@@ -213,62 +213,7 @@ public:
     const juce::String getProgramName (int) override            { return "None"; }
     void changeProgramName (int, const juce::String&) override  {}
 
-    //==============================================================================
-    // static constexpr const char* getPluginFormatName()      { return "Cmajor"; }
-    // static constexpr const char* getIdentifierPrefix()      { return "Cmajor:"; }
 
-    // void fillInPluginDescription (juce::PluginDescription& d) const override
-    // {
-    //     if (patch->isLoaded())
-    //     {
-    //         d.name                = patch->getName();
-    //         d.descriptiveName     = patch->getDescription().empty() ? patch->getName() : patch->getDescription();
-    //         d.category            = patch->getCategory();
-    //         d.manufacturerName    = patch->getManufacturer();
-    //         d.version             = patch->getVersion();
-    //         d.lastFileModTime     = getManifestFile (*patch).getLastModificationTime();
-    //         d.isInstrument        = patch->isInstrument();
-    //         d.uniqueId            = static_cast<int> (std::hash<std::string>{} (patch->getUID()));
-    //     }
-    //     else
-    //     {
-    //         d.name                = "Cmajor Patch-loader";
-    //         d.descriptiveName     = d.name;
-    //         d.category            = {};
-    //         d.manufacturerName    = "Cmajor Software Ltd.";
-    //         d.version             = {};
-    //         d.lastFileModTime     = {};
-    //         d.isInstrument        = true;
-    //         d.uniqueId            = {};
-    //     }
-
-    //     d.fileOrIdentifier    = createPatchID (*patch);
-    //     d.pluginFormatName    = getPluginFormatName();
-    //     d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
-    //     d.deprecatedUid       = d.uniqueId;
-    // }
-
-    // static std::string createPatchID (const PatchManifest& m)
-    // {
-    //     return getIdentifierPrefix()
-    //              + choc::json::toString (choc::json::create ("ID", m.ID,
-    //                                                          "name", m.name,
-    //                                                          "location", m.getFullPathForFile (m.manifestFile)),
-    //                                      false);
-    // }
-
-    // static std::string createPatchID (const Patch& p)
-    // {
-    //     if (auto m = p.getManifest())
-    //         return createPatchID (*m);
-
-    //     return getIdentifierPrefix() + std::string ("{}");
-    // }
-
-    // static bool isCmajorIdentifier (const juce::String& fileOrIdentifier)
-    // {
-    //     return fileOrIdentifier.startsWith (getIdentifierPrefix());
-    // }
 
     static juce::File getManifestFile (const cmaj::Patch& p)
     {
@@ -277,31 +222,6 @@ public:
 
         return {};
     }
-
-    // static choc::value::Value getPropertyFromPluginID (const juce::String& fileOrIdentifier, std::string_view property)
-    // {
-    //     if (isCmajorIdentifier (fileOrIdentifier))
-    //     {
-    //         try
-    //         {
-    //             auto json = choc::json::parse (fileOrIdentifier.fromFirstOccurrenceOf (getIdentifierPrefix(), false, true).toStdString());
-    //             return choc::value::Value (json[property]);
-    //         }
-    //         catch (...) {}
-    //     }
-
-    //     return {};
-    // }
-
-    // static std::string getIDFromPluginID (const juce::String& fileOrIdentifier)
-    // {
-    //     return getPropertyFromPluginID (fileOrIdentifier, "ID").toString();
-    // }
-
-    // static std::string getNameFromPluginID (const juce::String& fileOrIdentifier)
-    // {
-    //     return getPropertyFromPluginID (fileOrIdentifier, "name").toString();
-    // }
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override
