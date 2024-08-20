@@ -53,9 +53,6 @@ if(NOT CMAJ_TARGET_COMPILER)
     )
 endif()
 
-add_subdirectory(3rd_party/cmajor/modules)
-add_subdirectory(3rd_party/cmajor/modules/plugin cmaj_plugin_wrappers)
-
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
 add_subdirectory(3rd_party/JUCE)                    # If you've put JUCE in a subdirectory called JUCE
@@ -72,23 +69,18 @@ add_subdirectory(3rd_party/JUCE)                    # If you've put JUCE in a su
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
-
 juce_add_plugin(${TARGET_NAME}
-    # VERSION ...                               # Set this if the plugin version is different to the project version
-    # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
-    # ICON_SMALL ...
-    # COMPANY_NAME ...                          # Specify the name of the plugin's author
-    IS_SYNTH TRUE                       # Is this a synth or an effect?
-    NEEDS_MIDI_INPUT TRUE               # Does the plugin need midi input?
-    NEEDS_MIDI_OUTPUT TRUE             # Does the plugin need midi output?
-    # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
-    # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
-    # COPY_PLUGIN_AFTER_BUILD TRUE/FALSE        # Should the plugin be installed to a default location after building?
-    PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
-    PLUGIN_CODE Dem0                            # A unique four-character plugin id with exactly one upper-case character
-    NEEDS_WEB_BROWSER TRUE                                         # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
-    FORMATS Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-    PRODUCT_NAME "Audio Plugin Example")        # The name of the final executable, which can differ from the target name
+    PRODUCT_NAME "Playground"
+    BUNDLE_ID ""
+    COMPANY_NAME "RM_Estali"
+    COMPANY_COPYRIGHT ""
+    PLUGIN_CODE Cmaj
+    FORMATS Standalone
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT TRUE
+    NEEDS_WEB_BROWSER FALSE
+    MICROPHONE_PERMISSION_ENABLED TRUE
+)        # The name of the final executable, which can differ from the target name
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -96,7 +88,7 @@ juce_add_plugin(${TARGET_NAME}
 # include all your JUCE module headers; if you're happy to include module headers directly, you
 # probably don't need to call this.
 
-# juce_generate_juce_header(${TARGET_NAME})
+juce_generate_juce_header(${TARGET_NAME})
 
 # `target_sources` adds source files to a target. We pass the target that needs the sources as the
 # first argument, then a visibility parameter for the sources which should normally be PRIVATE.
@@ -106,25 +98,21 @@ juce_add_plugin(${TARGET_NAME}
 target_compile_features(${TARGET_NAME} PRIVATE ${CMAJ_TARGET_COMPILER})
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
 
+
+
+target_compile_definitions(${TARGET_NAME}
+    PUBLIC
+        # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
+        JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
+        JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
+        JUCE_VST3_CAN_REPLACE_VST2=0)
+
+
 add_compile_definitions (
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
 )
-    # JUCE_DISABLE_JUCE_VERSION_PRINTING=1
-    # JUCE_VST3_CAN_REPLACE_VST2=0
-    # JUCE_USE_CURL=0
-# )
-
-
-add_subdirectory(3rd_party/cmajor/modules cmajor)
-
-MAKE_CMAJ_LIBRARY (
-    LIBRARY_NAME cmajor_lib
-    INCLUDE_PLAYBACK
-    ENABLE_PERFORMER_LLVM
-)
-
 
 # Add all source files to file list
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/source/*.h)
@@ -142,20 +130,18 @@ foreach (dir ${source_dirs})
     endif ()
 endforeach ()
 
-target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/cmajor)
-target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/choc)
+# target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/cmajor)
+# target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/choc)
 
 
 
-# if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-#     find_package(PkgConfig REQUIRED)
-#     pkg_check_modules (gtk3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-#     pkg_check_modules (webkit2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
-#     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
-#     target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
-
-#     # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
-# endif ()
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+    target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
+    target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
+endif ()
 
 
 # Make the folder structure visible in the IDE
@@ -168,36 +154,19 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX "source" FILES ${SOU
 # definitions will be visible both to your code, and also the JUCE module code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
 
+add_subdirectory(3rd_party/cmajor/modules cmajor)
 
-target_compile_definitions(${TARGET_NAME}
-    PUBLIC
-        # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
-        JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
-        JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-        JUCE_VST3_CAN_REPLACE_VST2=0)
+MAKE_CMAJ_LIBRARY (
+    LIBRARY_NAME cmajor_lib
+    INCLUDE_PLAYBACK
+    ENABLE_PERFORMER_LLVM
+)
 
-# If your target needs extra binary assets, you can add them here. The first argument is the name of
-# a new static library target that will include all the binary resources. There is an optional
-# `NAMESPACE` argument that can specify the namespace of the generated binary data class. Finally,
-# the SOURCES argument should be followed by a list of source files that should be built into the
-# static library. These source files can be of any kind (wav data, images, fonts, icons etc.).
-# Conversion to binary-data will happen when your target is built.
-
-# juce_add_binary_data(AudioPluginData SOURCES ...)
-
-# `target_link_libraries` links libraries and JUCE modules to other libraries or executables. Here,
-# we're linking our executable target to the `juce::juce_audio_utils` module. Inter-module
-# dependencies are resolved automatically, so `juce_core`, `juce_events` and so on will also be
-# linked automatically. If we'd generated a binary data target above, we would need to link to it
-# here too. This is a standard CMake command.
 
 target_link_libraries(${TARGET_NAME}
     PRIVATE
-        # AudioPluginData           # If we'd created a binary data target, we'd link to it here
-        juce::juce_audio_utils
         cmajor_lib
+        juce::juce_audio_utils
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+)
+

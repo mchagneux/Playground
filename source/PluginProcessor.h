@@ -1,6 +1,7 @@
 #pragma once
 
-#include <juce_audio_processors/juce_audio_processors.h>
+// #include <juce_audio_processors/juce_audio_processors.h>
+#include <JuceHeader.h>
 #include "CmajorProcessor.h"
 #include "CmajorLoaderUI.h"
 
