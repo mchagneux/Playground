@@ -15,7 +15,11 @@ cmake_minimum_required(VERSION 3.22)
 # directories, and the current project version. This is a standard CMake command.
 
 project(Playground VERSION 0.0.1)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set (TARGET_NAME ${PROJECT_NAME})
+
+include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
 
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
@@ -55,7 +59,10 @@ endif()
 
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
-add_subdirectory(3rd_party/JUCE)                    # If you've put JUCE in a subdirectory called JUCE
+
+set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
+
+add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in a subdirectory called JUCE
 
 # If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
 # system. This setup should be done before calling `juce_add_plugin`.
@@ -69,13 +76,21 @@ add_subdirectory(3rd_party/JUCE)                    # If you've put JUCE in a su
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
+
+# Include (FetchContent)
+# FetchContent_Declare (melatonin_inspector
+#   GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
+#   GIT_TAG origin/main
+#   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
+# FetchContent_MakeAvailable (melatonin_inspector)
+
 juce_add_plugin(${TARGET_NAME}
     PRODUCT_NAME "Playground"
     BUNDLE_ID ""
     COMPANY_NAME "RM_Estali"
     COMPANY_COPYRIGHT ""
     PLUGIN_CODE Cmaj
-    FORMATS Standalone
+    FORMATS VST3 Standalone
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -141,6 +156,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
+    add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
+
 endif ()
 
 
@@ -167,6 +184,7 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         cmajor_lib
         juce::juce_audio_utils
+        # melatonin_inspector
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
 

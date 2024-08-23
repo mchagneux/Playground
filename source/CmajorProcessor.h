@@ -55,14 +55,14 @@
 
 
 
-struct DummyWorkerContext : public cmaj::Patch::WorkerContext {
+// struct DummyWorkerContext : public cmaj::Patch::WorkerContext {
 
-    void initialise(std::function<void(const choc::value::ValueView &)> sendMessage,
-                std::function<void(const std::string &)> reportError) override {}
+//     void initialise(std::function<void(const choc::value::ValueView &)> sendMessage,
+//                 std::function<void(const std::string &)> reportError) override {}
 
-    void sendMessage(const std::string &json,
-                std::function<void(const std::string &)> reportError) override {}
-};
+//     void sendMessage(const std::string &json,
+//                 std::function<void(const std::string &)> reportError) override {}
+// };
 
 
 
@@ -78,12 +78,13 @@ public:
     CmajorProcessor (BusesProperties buses)
         : juce::AudioProcessor (std::move (buses))
     {
-        patch = std::make_unique<cmaj::Patch>();
 
-        // juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
+        patch = std::make_shared<cmaj::Patch>();
 
         patch->setAutoRebuildOnFileChange (true);
         patch->createEngine = +[] { return cmaj::Engine::create(); };
+
+        juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
 
         patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
 
@@ -115,15 +116,15 @@ public:
         //     return std::make_unique<DummyWorkerContext>();
         // };
 
-
-        ensureNumParameters (100);
-
-
        #if CMAJ_USE_QUICKJS_WORKER
         enableQuickJSPatchWorker (*patch);
        #else
         enableWebViewPatchWorker (*patch);
        #endif
+
+        ensureNumParameters (100);
+
+
     }
 
     ~CmajorProcessor() override
@@ -273,7 +274,6 @@ public:
     {
         if (! patch->isPlayable() || isSuspended())
         {
-            std::cout << "Patch not playable" << std::endl;
             audio.clear();
             midi.clear();
             return;
@@ -341,7 +341,7 @@ public:
         applyRateAndBlockSize (getSampleRate(), static_cast<uint32_t> (getBlockSize()));
     }
 
-    std::unique_ptr<cmaj::Patch> patch;
+    std::shared_ptr<cmaj::Patch> patch;
     std::string statusMessage;
     bool isStatusMessageError = false;
     // bool dllLoadedSuccessfully = false;
@@ -405,6 +405,7 @@ protected:
     {
         if (statusMessage != newMessage || isStatusMessageError != isError)
         {
+            std::cout << newMessage << std::endl; 
             statusMessage = newMessage;
             isStatusMessageError = isError;
             notifyEditorStatusMessageChanged();
@@ -433,7 +434,7 @@ protected:
         juce::ValueTree state (ids.Cmajor);
 
         // if constexpr (! DerivedType::isFixedPatch)
-        //     state.setProperty (ids.location, juce::String (location.string()), nullptr);
+        state.setProperty (ids.location, juce::String (location.string()), nullptr);
 
         return state;
     }
@@ -924,9 +925,11 @@ struct CmajorComponent : public juce::Component,
         if (source == &owner){
             if (owner.editorsShouldUpdatePatch) {
                 onPatchChanged();
+                owner.editorsShouldUpdatePatch = false;
             }
             else if (owner.editorsShouldUpdateMessage){
                 statusMessageChanged();
+                owner.editorsShouldUpdateMessage = false; 
             }
         };
     }
@@ -989,12 +992,6 @@ struct CmajorComponent : public juce::Component,
             setSize (std::max (50, patchWebViewHolder->getWidth()),
                         std::max (50, patchWebViewHolder->getHeight()));// + CmajorProcessor::extraCompHeight));
     }
-
-    void paint(juce::Graphics& g) override 
-    {
-        g.fillAll (juce::Colours::white);
-    }
-
 
     void resized() override
     {
