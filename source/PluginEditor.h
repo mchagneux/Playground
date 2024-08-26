@@ -20,7 +20,7 @@ private:
     // access the processor object that created it.
     AudioPluginAudioProcessor& processorRef;
     std::unique_ptr<CmajorLoaderUI> cmajorLoaderUI;
-    // std::unique_ptr<CmajorComponent> cmajorUI;
+    std::unique_ptr<CmajorComponent> cmajorUI;
     // melatonin::Inspector inspector { *this };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)
 };

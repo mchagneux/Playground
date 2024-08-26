@@ -75,15 +75,9 @@ public:
     bool editorsShouldUpdatePatch = false, editorsShouldUpdateMessage = false; 
     int lastEditorWidth = 0, lastEditorHeight = 0;
 
-    CmajorProcessor (BusesProperties buses)
-        : juce::AudioProcessor (std::move (buses))
+    CmajorProcessor (BusesProperties buses, std::shared_ptr<cmaj::Patch> p)
+        : juce::AudioProcessor (std::move (buses)), patch(std::move(p))
     {
-
-        patch = std::make_shared<cmaj::Patch>();
-
-        patch->setAutoRebuildOnFileChange (true);
-        patch->createEngine = +[] { return cmaj::Engine::create(); };
-
         juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
 
         patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
@@ -216,6 +210,7 @@ public:
     void setCurrentProgram (int) override                       {}
     const juce::String getProgramName (int) override            { return "None"; }
     void changeProgramName (int, const juce::String&) override  {}
+    static constexpr const char* getIdentifierPrefix()      { return "Cmajor:"; }
 
 
 
@@ -226,6 +221,54 @@ public:
 
         return {};
     }
+
+    static std::string createPatchID (const cmaj::PatchManifest& m)
+    {
+        return getIdentifierPrefix()
+                 + choc::json::toString (choc::json::create ("ID", m.ID,
+                                                             "name", m.name,
+                                                             "location", m.getFullPathForFile (m.manifestFile)),
+                                         false);
+    }
+
+    static std::string createPatchID (const cmaj::Patch& p)
+    {
+        if (auto m = p.getManifest())
+            return createPatchID (*m);
+
+        return getIdentifierPrefix() + std::string ("{}");
+    }
+
+    static bool isCmajorIdentifier (const juce::String& fileOrIdentifier)
+    {
+        return fileOrIdentifier.startsWith (getIdentifierPrefix());
+    }
+
+    static choc::value::Value getPropertyFromPluginID (const juce::String& fileOrIdentifier, std::string_view property)
+    {
+        if (isCmajorIdentifier (fileOrIdentifier))
+        {
+            try
+            {
+                auto json = choc::json::parse (fileOrIdentifier.fromFirstOccurrenceOf (getIdentifierPrefix(), false, true).toStdString());
+                return choc::value::Value (json[property]);
+            }
+            catch (...) {}
+        }
+
+        return {};
+    }
+
+    static std::string getIDFromPluginID (const juce::String& fileOrIdentifier)
+    {
+        return getPropertyFromPluginID (fileOrIdentifier, "ID").toString();
+    }
+
+    static std::string getNameFromPluginID (const juce::String& fileOrIdentifier)
+    {
+        return getPropertyFromPluginID (fileOrIdentifier, "name").toString();
+    }
+
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override
@@ -398,7 +441,7 @@ protected:
         updateHostDisplay (changes);
 
         if (patchChangeCallback)
-            patchChangeCallback (static_cast<CmajorProcessor&> (*this));
+            patchChangeCallback (*this);
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)

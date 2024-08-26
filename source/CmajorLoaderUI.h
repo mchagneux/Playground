@@ -67,9 +67,9 @@ public:
 
     void resized() override{
         auto area = getLocalBounds();
-        auto messageBoxArea = area.removeFromTop((int) 0.5*getHeight());
+        auto messageBoxArea = area.removeFromTop((int) (0.5*getHeight()));
 
-        auto loadArea = area.removeFromRight((int) getWidth() / 2); 
+        auto loadArea = area.removeFromRight((int) (getWidth() / 2)); 
         loadButton.setBounds(loadArea);
         unloadButton.setBounds(area);
         messageBox.setBounds(messageBoxArea);

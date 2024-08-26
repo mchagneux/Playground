@@ -12,6 +12,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+
+    auto patch = std::make_shared<cmaj::Patch>();
+    patch->setAutoRebuildOnFileChange (true);
+    patch->createEngine = +[] { return cmaj::Engine::create(); };
+
     cmajorProcessor = std::make_unique<CmajorProcessor>((BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
@@ -19,7 +24,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ));
+                       ), std::move(patch));
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()

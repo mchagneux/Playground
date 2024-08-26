@@ -17,6 +17,8 @@ cmake_minimum_required(VERSION 3.22)
 project(Playground VERSION 0.0.1)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+
 set (TARGET_NAME ${PROJECT_NAME})
 
 include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
@@ -49,13 +51,12 @@ if(NOT CMAJ_VERSION)
 endif()
 
 
-if(NOT CMAJ_TARGET_COMPILER)
-    set(CMAJ_TARGET_COMPILER
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
-        $<$<CXX_COMPILER_ID:GNU>:cxx_std_17>
-        $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
-    )
-endif()
+# if(NOT CMAJ_TARGET_COMPILER)
+#     set(CMAJ_TARGET_COMPILER
+#         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
+#         $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
+#     )
+# endif()
 
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
@@ -90,7 +91,7 @@ juce_add_plugin(${TARGET_NAME}
     COMPANY_NAME "RM_Estali"
     COMPANY_COPYRIGHT ""
     PLUGIN_CODE Cmaj
-    FORMATS VST3 Standalone
+    FORMATS VST3
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -110,17 +111,15 @@ juce_generate_juce_header(${TARGET_NAME})
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
 
-target_compile_features(${TARGET_NAME} PRIVATE ${CMAJ_TARGET_COMPILER})
-target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
-
-
+# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS} -std=c++17)
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
-        JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
         JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-        JUCE_VST3_CAN_REPLACE_VST2=0)
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_WEB_BROWSER=0)
 
 
 add_compile_definitions (
@@ -156,7 +155,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
-    add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
+    # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTsRYPOINT=1)
 
 endif ()
 
@@ -184,7 +183,5 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         cmajor_lib
         juce::juce_audio_utils
-        # melatonin_inspector
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
 

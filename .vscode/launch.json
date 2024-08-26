@@ -8,7 +8,7 @@
             "type": "lldb-dap",
             "request": "launch",
             "name": "From AudioPluginHost",
-            "program": "${workspaceRoot}/3rd_party/JUCE/cmake-build/extras/AudioPluginHost/AudioPluginHost_artefacts/AudioPluginHost",
+            "program": "${workspaceRoot}/3rd_party/JUCE/build/extras/AudioPluginHost/AudioPluginHost_artefacts/Debug/AudioPluginHost",
             "args": [],
             "env": [],
             "cwd": "${workspaceRoot}"
@@ -27,7 +27,7 @@
             "type": "lldb-dap",
             "request": "launch",
             "name": "Standalone",
-            "program": "build/Playground_artefacts/Debug/Standalone/Playground",
+            "program": "${workspaceRoot}/build/Playground_artefacts/Debug/Standalone/Playground",
             "args": [],
             "env": [],
             "cwd": "${workspaceRoot}"
