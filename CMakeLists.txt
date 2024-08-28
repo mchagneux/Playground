@@ -69,12 +69,12 @@ add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
 
-# Include (FetchContent)
-# FetchContent_Declare (melatonin_inspector
-#   GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
-#   GIT_TAG origin/main
-#   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
-# FetchContent_MakeAvailable (melatonin_inspector)
+Include (FetchContent)
+FetchContent_Declare (melatonin_inspector
+  GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
+  GIT_TAG origin/main
+  SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
+FetchContent_MakeAvailable (melatonin_inspector)
 
 juce_add_plugin(${TARGET_NAME}
     PRODUCT_NAME "Playground"
@@ -175,5 +175,6 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         cmajor_lib
         juce::juce_audio_utils
+        melatonin_inspector
 )
 

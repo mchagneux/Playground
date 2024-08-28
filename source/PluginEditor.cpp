@@ -1,4 +1,3 @@
-#include "CmajorProcessor.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -9,10 +8,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     juce::ignoreUnused (processorRef);
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    cmajorLoaderUI = std::make_unique<CmajorLoaderUI>(p.getCmajorProcessor());
-    cmajorUI = std::make_unique<CmajorComponent>(p.getCmajorProcessor(), *this); 
-    addAndMakeVisible(*cmajorUI);
-    addAndMakeVisible(*cmajorLoaderUI);
+    cmajorJITComponent = std::make_unique<CmajorJITComponent>(processorRef.getCmajorProcessor());
+    addAndMakeVisible(*cmajorJITComponent);
+    // setResizable(true, true);
     setSize (1280, 720);
 }
 
@@ -35,9 +33,7 @@ void AudioPluginAudioProcessorEditor::resized()
 {
 
     auto area = getLocalBounds();
-    auto cmajorLoaderArea = area.removeFromBottom( (int)(0.08*getHeight())); 
-    cmajorLoaderUI->setBounds(cmajorLoaderArea);
-    cmajorUI->setBounds(area);
+    cmajorJITComponent->setBounds(area.removeFromLeft((int)(getWidth() / 3)));
 
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
