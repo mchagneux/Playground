@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "juce_events/juce_events.h"
 #include <JuceHeader.h>
 
 #if JUCE_LINUX
@@ -38,7 +37,7 @@
 
 #include "../3rd_party/cmajor/include/choc/memory/choc_xxHash.h"
 #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_Patch.h"
-#include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWebView.h"
+
 
 
 // #include <juce_audio_processors/juce_audio_processors.h>
@@ -78,7 +77,14 @@ public:
     CmajorProcessor (BusesProperties buses, std::shared_ptr<cmaj::Patch> p)
         : juce::AudioProcessor (std::move (buses)), patch(std::move(p))
     {
+
         juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
+
+        #if CMAJ_USE_QUICKJS_WORKER
+            enableQuickJSPatchWorker (*patch);
+        #else
+            enableWebViewPatchWorker (*patch);
+        #endif
 
         patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
 
@@ -105,19 +111,7 @@ public:
             handleOutputEvent (frame, endpointID, v);
         };
 
-
-        // patch->createContextForPatchWorker = [] {
-        //     return std::make_unique<DummyWorkerContext>();
-        // };
-
-       #if CMAJ_USE_QUICKJS_WORKER
-        enableQuickJSPatchWorker (*patch);
-       #else
-        enableWebViewPatchWorker (*patch);
-       #endif
-
         ensureNumParameters (100);
-
 
     }
 
@@ -144,7 +138,7 @@ public:
     {
         cmaj::Patch::LoadParams loadParams;
         loadParams.manifest = manifest;
-        patch->loadPatch (loadParams, false);
+        patch->loadPatch (loadParams, true);
     }
 
     bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState)
@@ -320,6 +314,7 @@ public:
             audio.clear();
             midi.clear();
             return;
+
         }
 
         juce::ScopedNoDenormals noDenormals;
@@ -340,6 +335,7 @@ public:
                         {
                             midi.addEvent (m.data(), static_cast<int> (m.length()), static_cast<int> (frame));
                         });
+
     }
 
     void processBlock (juce::AudioBuffer<double>&, juce::MidiBuffer&) override { CMAJ_ASSERT_FALSE; }
@@ -427,17 +423,21 @@ protected:
 
     void handlePatchChange()
     {
+
         auto changes = juce::AudioProcessorListener::ChangeDetails::getDefaultFlags();
 
         auto newLatency = (int) patch->getFramesLatency();
 
         changes.latencyChanged           = newLatency != getLatencySamples();
+
         changes.parameterInfoChanged     = updateParameters();
+
         changes.programChanged           = false;
         changes.nonParameterStateChanged = true;
 
         setLatencySamples (newLatency);
         notifyEditorPatchChanged();
+
         updateHostDisplay (changes);
 
         if (patchChangeCallback)
@@ -459,16 +459,14 @@ protected:
     {
         editorsShouldUpdateMessage = true;
         sendSynchronousChangeMessage();
-        // if (auto e = dynamic_cast<CmajorComponent*> (getActiveEditor()))
-        //     e->statusMessageChanged();
+
     }
 
     void notifyEditorPatchChanged()
     {
         editorsShouldUpdatePatch = true;
         sendSynchronousChangeMessage();
-        // if (auto* e = dynamic_cast<CmajorComponent*> (getActiveEditor()))
-        //     e->onPatchChanged();
+
     }
 
     //==============================================================================
@@ -884,9 +882,8 @@ protected:
         ensureNumParameters (params.size());
         // }
 
-        for (size_t i = 0; i < params.size(); ++i)
-            changed = parameters[i]->setPatchParam (params[i]) || changed;
-
+        // for (size_t i = 0; i < params.size(); ++i)
+        //     changed = parameters[i]->setPatchParam (params[i]) || changed;
         return changed;
     }
 
@@ -896,7 +893,7 @@ protected:
         {
             auto p = std::make_unique<Parameter> ("P" + juce::String (parameters.size()));
             parameters.push_back (p.get());
-            // addHostedParameter (std::move (p));
+            // addParameter (std::move (p));
         }
     }
 
@@ -921,156 +918,4 @@ protected:
     } ids;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CmajorProcessor)
-};
-
-
-struct CmajorComponent : public juce::Component, 
-                        public juce::ChangeListener
-
-{
-    CmajorComponent (CmajorProcessor& p): owner (p),
-            patchWebView (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
-    {
-
-        owner.addChangeListener(this);
-
-        patchWebViewHolder = choc::ui::createJUCEWebViewHolder (patchWebView->getWebView());
-        patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
-
-        // setResizeLimits (250, 160, 32768, 32768);
-
-        // lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
-        // lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
-        // setLookAndFeel (&lookAndFeel);
-
-        // extraComp = owner.createExtraComponent();
-
-        onPatchChanged (false);
-
-        // if (extraComp)
-            // addAndMakeVisible (*extraComp);
-
-        statusMessageChanged();
-
-        juce::Font::setDefaultMinimumHorizontalScaleFactor (1.0f);
-    }
-
-    ~CmajorComponent() override
-    {
-        // owner.editorBeingDeleted (this);
-        // setLookAndFeel (nullptr);
-        patchWebViewHolder.reset();
-        patchWebView.reset();
-        owner.removeChangeListener(this);
-    }
-
-    void changeListenerCallback (juce::ChangeBroadcaster * source) override {
-        if (source == &owner){
-            if (owner.editorsShouldUpdatePatch) {
-                onPatchChanged();
-                owner.editorsShouldUpdatePatch = false;
-            }
-            else if (owner.editorsShouldUpdateMessage){
-                statusMessageChanged();
-                owner.editorsShouldUpdateMessage = false; 
-            }
-        };
-    }
-
-    void statusMessageChanged()
-    {
-        // owner.refreshExtraComp (extraComp.get());
-        patchWebView->setStatusMessage (owner.statusMessage);
-    }
-
-    static cmaj::PatchManifest::View derivePatchViewSize (const CmajorProcessor& owner)
-    {
-        auto view = cmaj::PatchManifest::View
-        {
-            choc::json::create ("width", owner.lastEditorWidth,
-                                "height", owner.lastEditorHeight)
-        };
-
-        if (auto manifest = owner.patch->getManifest())
-            if (auto v = manifest->findDefaultView())
-                view = *v;
-
-        if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
-        if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
-
-        return view;
-    }
-
-    void onPatchChanged (bool forceReload = true)
-    {
-        if (owner.isViewVisible())
-        {
-            patchWebView->setActive (true);
-            patchWebView->update (derivePatchViewSize (owner));
-            patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
-
-            // setResizable (patchWebView->resizable, false);
-
-            addAndMakeVisible (*patchWebViewHolder);
-            childBoundsChanged (nullptr);
-        }
-        else
-        {
-            removeChildComponent (patchWebViewHolder.get());
-
-            patchWebView->setActive (false);
-            patchWebViewHolder->setVisible (false);
-
-            setSize (defaultWidth, defaultHeight);
-            // setResizable (true, false);
-        }
-
-        if (forceReload)
-            patchWebView->reload();
-    }
-
-    void childBoundsChanged (Component*) override
-    {
-        if (! isResizing && patchWebViewHolder->isVisible())
-            setSize (std::max (50, patchWebViewHolder->getWidth()),
-                        std::max (50, patchWebViewHolder->getHeight()));// + CmajorProcessor::extraCompHeight));
-    }
-
-    void resized() override
-    {
-        isResizing = true;
-        // juce::AudioProcessorEditor::resized();
-
-        auto r = getLocalBounds();
-
-        if (patchWebViewHolder->isVisible())
-        {
-            patchWebViewHolder->setBounds (r.removeFromTop (getHeight()));// - DerivedType::extraCompHeight));
-            // r.removeFromTop (4);
-
-            if (getWidth() > 0 && getHeight() > 0)
-            {
-                owner.lastEditorWidth = patchWebViewHolder->getWidth();
-                owner.lastEditorHeight = patchWebViewHolder->getHeight();
-            }
-        }
-
-        // if (extraComp)
-        //     extraComp->setBounds (r);
-
-        isResizing = false;
-    }
-
-
-    //==============================================================================
-    CmajorProcessor& owner;
-
-    std::unique_ptr<cmaj::PatchWebView> patchWebView;
-    std::unique_ptr<juce::Component> patchWebViewHolder;//, extraComp;
-
-    bool isResizing = false;
-
-    static constexpr int defaultWidth = 500, defaultHeight = 400;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CmajorComponent)
 };

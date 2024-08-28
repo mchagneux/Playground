@@ -16,9 +16,6 @@ cmake_minimum_required(VERSION 3.22)
 
 project(Playground VERSION 0.0.1)
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-
 set (TARGET_NAME ${PROJECT_NAME})
 
 include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
@@ -51,12 +48,6 @@ if(NOT CMAJ_VERSION)
 endif()
 
 
-# if(NOT CMAJ_TARGET_COMPILER)
-#     set(CMAJ_TARGET_COMPILER
-#         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
-#         $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
-#     )
-# endif()
 
 # find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
 # or
@@ -91,8 +82,9 @@ juce_add_plugin(${TARGET_NAME}
     COMPANY_NAME "RM_Estali"
     COMPANY_COPYRIGHT ""
     PLUGIN_CODE Cmaj
-    FORMATS VST3
+    FORMATS Standalone VST3
     IS_SYNTH FALSE
+    COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
     MICROPHONE_PERMISSION_ENABLED TRUE
@@ -111,8 +103,8 @@ juce_generate_juce_header(${TARGET_NAME})
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
 
-# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
-target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS} -std=c++17)
+target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC

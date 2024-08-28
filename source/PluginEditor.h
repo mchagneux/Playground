@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CmajorProcessor.h"
+#include "CmajorProcessorUI.h"
 #include "PluginProcessor.h"
 // #include "melatonin_inspector/melatonin_inspector.h"
 

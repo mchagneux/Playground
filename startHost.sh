@@ -1,1 +1,0 @@
-./3rd_party/JUCE/cmake-build/extras/AudioPluginHost/AudioPluginHost_artefacts/AudioPluginHost
