@@ -3,28 +3,9 @@
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
+     : AudioProcessor (getBusesProperties()), mainProcessor(new juce::AudioProcessorGraph())
 {
-
-    auto patch = std::make_shared<cmaj::Patch>();
-    patch->setAutoRebuildOnFileChange (true);
-    patch->createEngine = +[] { return cmaj::Engine::create(); };
-
-    cmajorProcessor = std::make_unique<CmajorProcessor>((BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       ), std::move(patch));
+    initialiseGraph();
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -102,16 +83,22 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    mainProcessor->setPlayConfigDetails (getMainBusNumInputChannels(),
+                                            getMainBusNumOutputChannels(),
+                                            sampleRate, samplesPerBlock);
+    for (auto node : mainProcessor->getNodes())         
+        node->getProcessor()->enableAllBuses();
 
-    cmajorProcessor->prepareToPlay(sampleRate, samplesPerBlock); //int samplesPerBlock)
+    mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
+
+
 }
 
 void AudioPluginAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
-    cmajorProcessor->releaseResources();
+    mainProcessor->releaseResources();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -143,7 +130,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ignoreUnused (midiMessages);
 
-    cmajorProcessor->processBlock(buffer, midiMessages);
+    mainProcessor->processBlock (buffer, midiMessages);
 
     // juce::ScopedNoDenormals noDenormals;
     // auto totalNumInputChannels  = getTotalNumInputChannels();
