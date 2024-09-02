@@ -1,0 +1,16 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "com.your_name.your_patch_ID",
+    "version":          "1.0",
+    "name":             "Synth",
+    "description":      "Synth",
+    "category":         "generator",
+    "manufacturer":     "RM Estali",
+    "isInstrument":     true,
+
+    "source":           [
+                        "Synth.cmajor", 
+                        "Envelopes.cmajor", 
+                        "Oscillators.cmajor"]
+}

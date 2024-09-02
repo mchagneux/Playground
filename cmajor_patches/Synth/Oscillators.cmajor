@@ -1,0 +1,320 @@
+
+namespace MyOscillators {
+
+
+    enum Shape
+    {
+        sine,
+        triangle,
+        square,
+        sawtoothUp,
+        sawtoothDown,
+        random
+    }
+
+   namespace waveshape (using SampleType = float32)
+    {
+        static_assert (SampleType.isPrimitive && SampleType.primitiveType.isFloat,
+                       "SampleType must be a floating point type");
+
+        //==============================================================================
+        /// Returns a sine wave, where phase is in the range 0 to 1
+        SampleType sine<T> (T phase)                                                    { return SampleType (sin (phase * T(twoPi))); }
+
+        /// Returns a sine wave with a given amplitude, where phase is in the range 0 to 1
+        SampleType sine<T> (T phase, SampleType amplitude)                              { return SampleType (sin (phase * T(twoPi))) * amplitude; }
+
+        /// Returns a sine wave with a given amplitude and offset, where phase is in the range 0 to 1
+        SampleType sine<T> (T phase, SampleType amplitude, SampleType offset)           { return SampleType (sin (phase * T(twoPi))) * amplitude + offset; }
+
+        //==============================================================================
+        /// Returns a bipolar square wave, where phase is in the range 0 to 1
+        SampleType square<T> (T phase)                                                  { return phase > T(0.5f) ? SampleType (-1) : SampleType (1); }
+
+        /// Returns a square wave with a given amplitude, where phase is in the range 0 to 1
+        SampleType square<T> (T phase, SampleType amplitude)                            { return phase > T(0.5f) ? -amplitude : amplitude; }
+
+        /// Returns a square wave with a given amplitude and offset, where phase is in the range 0 to 1
+        SampleType square<T> (T phase, SampleType amplitude, SampleType offset)         { return phase > T(0.5f) ? offset - amplitude : offset + amplitude; }
+
+        //==============================================================================
+        /// Returns a bipolar triangle wave, where phase is in the range 0 to 1
+        SampleType triangle<T> (T phase)                                                { let s = SampleType (phase) * 4; return phase > T(0.5f) ? SampleType (3) - s : s - SampleType (1); }
+
+        /// Returns a triangle wave with a given amplitude, where phase is in the range 0 to 1
+        SampleType triangle<T> (T phase, SampleType amplitude)                          { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? (amplitude * 3) - s : s - amplitude; }
+
+        /// Returns a triangle wave with a given amplitude and offset, where phase is in the range 0 to 1
+        SampleType triangle<T> (T phase, SampleType amplitude, SampleType offset)       { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? (offset + amplitude * 3) - s : (offset - amplitude) + s; }
+
+        //==============================================================================
+        /// Returns a bipolar upwards sawtooth wave, where phase is in the range 0 to 1
+        SampleType sawtoothUp<T> (T phase)                                              { return SampleType (phase) * SampleType (2) - SampleType (1); }
+
+        /// Returns an upwards sawtooth wave with a given amplitude, where phase is in the range 0 to 1
+        SampleType sawtoothUp<T> (T phase, SampleType amplitude)                        { return SampleType (phase) * (SampleType (2) * amplitude) - amplitude; }
+
+        /// Returns an upwards sawtooth wave with a given amplitude and offset, where phase is in the range 0 to 1
+        SampleType sawtoothUp<T> (T phase, SampleType amplitude, SampleType offset)     { return (offset - amplitude) + SampleType (phase) * (SampleType (2) * amplitude); }
+
+        //==============================================================================
+        /// Returns a bipolar downwards sawtooth wave, where phase is in the range 0 to 1
+        SampleType sawtoothDown<T> (T phase)                                            { return SampleType (1) - SampleType (phase) * SampleType (2); }
+
+        /// Returns an downwards sawtooth wave with a given amplitude, where phase is in the range 0 to 1
+        SampleType sawtoothDown<T> (T phase, SampleType amplitude)                      { return amplitude - SampleType (phase) * (SampleType (2) * amplitude); }
+
+        /// Returns an downwards sawtooth wave with a given amplitude and offset, where phase is in the range 0 to 1
+        SampleType sawtoothDown<T> (T phase, SampleType amplitude, SampleType offset)   { return (offset + amplitude) - SampleType (phase) * (SampleType (2) * amplitude); }
+
+        //==============================================================================
+        SampleType polyblep<T> (T phase, T increment)
+        {
+            if (phase < increment)
+            {
+                let p = phase / increment;
+                return SampleType ((p + p) - (p * p) - T(1));
+            }
+
+            if (phase > T(1) - increment)
+            {
+                let p = (phase - T(1)) / increment;
+                return SampleType ((p + p) + (p * p) + T(1));
+            }
+
+            return ();
+        }
+
+        SampleType polyblep_square<T> (T phase, T increment)
+        {
+            return (phase < T(0.5) ? SampleType (-1) : SampleType (1))
+                    - polyblep (phase, increment)
+                    + polyblep (fmod (phase + T(0.5), T(1)), increment);
+        }
+
+        SampleType polyblep_sawtooth<T> (T phase, T increment)
+        {
+            return SampleType ((phase * T(2)) - T(1))
+                    - polyblep (phase, increment);
+        }
+
+        //==============================================================================
+        /// Returns a wave of the shape type passed in as an argument, where phase is in the range 0 to 1
+        SampleType generate<T> (Shape waveShapeType, T phase)
+        {
+            if (waveShapeType == Shape::triangle)      return triangle (phase);
+            if (waveShapeType == Shape::square)        return square (phase);
+            if (waveShapeType == Shape::sawtoothUp)    return sawtoothUp (phase);
+            if (waveShapeType == Shape::sawtoothDown)  return sawtoothDown (phase);
+
+            return sine (phase);
+        }
+
+        /// Returns a wave of the shape type passed in as an argument, where phase is in the range 0 to 1
+        SampleType generate<T> (Shape waveShapeType, T phase, SampleType amplitude, SampleType offset)
+        {
+            if (waveShapeType == Shape::triangle)      return triangle (phase, amplitude, offset);
+            if (waveShapeType == Shape::square)        return square (phase, amplitude, offset);
+            if (waveShapeType == Shape::sawtoothUp)    return sawtoothUp (phase, amplitude, offset);
+            if (waveShapeType == Shape::sawtoothDown)  return sawtoothDown (phase, amplitude, offset);
+
+            return sine (phase, amplitude, offset);
+        }
+    }
+
+
+    struct PhasorState
+    {
+        float32 phase, increment;
+
+        void setFrequency (float64 outputFrequencyHz, float64 oscillatorFrequencyHz)
+        {
+            this.increment = this.phase.type (fmod (oscillatorFrequencyHz / outputFrequencyHz, 1.0));
+        }
+
+        float32 next()
+        {
+            let p = this.phase;
+            var next = p + this.increment;
+
+            if (next >= 1)
+                next -= 1;
+
+            this.phase = next;
+            return p;
+        }
+    }
+
+    processor Phasor (using FrameType, float32 initialFrequency = 1000)
+    {
+        input event float32 frequencyIn [[ name: "Frequency", min: 0, max: 24000.0f, init: 440.0f, unit: "Hz" ]];
+
+        output stream FrameType out;
+
+        //==============================================================================
+        PhasorState phasor;
+
+        void init()                                 { phasor.setFrequency (processor.frequency, initialFrequency); }
+        event frequencyIn (float32 newFrequency)    { phasor.setFrequency (processor.frequency, newFrequency); }
+
+        void main()
+        {
+            loop
+            {
+                out <- FrameType (phasor.next());
+                advance();
+            }
+        }
+    }
+
+
+    processor Sine (using FrameType,
+                    float32 initialFrequency = 440.0f)
+    {
+        input event float32 frequencyIn    [[ name: "Frequency", min: 0, max: 24000.0f, init: 440.0f, unit: "Hz" ]];
+
+        output stream FrameType out;
+
+        //==============================================================================
+        PhasorState phasor;
+
+        void init()                                 { phasor.setFrequency (processor.frequency, initialFrequency); }
+        event frequencyIn (float32 newFrequency)    { phasor.setFrequency (processor.frequency, newFrequency); }
+        void main()
+        {
+            loop
+            {
+                out <- FrameType (sin (phasor.next() * float32 (twoPi)));
+                advance();
+            }
+        }
+    }
+    
+    processor PhaseModulatedSineOscillator(using FrameType, 
+                                            float32 initialFrequency = 440.0f)
+
+    {
+
+
+
+        input event float32 feedbackIn [[name: "Feedback", min:-1, max:1, init:0, unit:""]];
+        input event float32 frequencyIn [[ name: "Frequency", min: 0, max: 24000.0f, init: 440.0f, unit: "Hz" ]];
+        input event float32 modAmtIn [[name: "PM Amt", min: 0, max: 1, init: 0.2, unit: ""]];
+        input stream float32 modulatorIn; 
+        output stream FrameType out;
+
+
+        PhasorState phasor; 
+
+        float32 modAmt = 1; 
+        event modAmtIn (float32 m) { modAmt = m ; }
+
+        float32 feedbackAmt = 0;
+        float32 fb = 0;
+        event feedbackIn(float32 f) {feedbackAmt = f;} 
+
+
+        void init()                                 { phasor.setFrequency (processor.frequency, initialFrequency); }
+        event frequencyIn (float32 newFrequency)    { phasor.setFrequency (processor.frequency, newFrequency); }
+        
+        void main()
+        {
+            loop
+            {
+                fb = FrameType (sin ((twoPi) * (phasor.next()  + modulatorIn * modAmt + 0.3 * feedbackAmt * fb)));
+                out <- fb;
+                advance();
+            }
+        }
+
+    }
+
+
+    struct PolyblepState
+    {
+        PhasorState phasor;
+        float32 accumulator;
+
+        void setFrequency (float64 outputFrequencyHz, float64 oscillatorFrequencyHz)
+        {
+            this.phasor.setFrequency (outputFrequencyHz, oscillatorFrequencyHz);
+        }
+
+        float32 nextSine(float32 modulation)
+        {
+            return waveshape(float32)::sine (this.phasor.next() + modulation);
+        }
+
+        /// Returns the sample of a square wave.
+        float32 nextSquare(float32 modulation)
+        {
+            return waveshape(float32)::polyblep_square (this.phasor.next() + modulation, this.phasor.increment);
+        }
+
+        /// Returns the sample of a sawtooth wave.
+        float32 nextSawtooth(float32 modulation)
+        {
+            return waveshape(float32)::polyblep_sawtooth (this.phasor.next() + modulation, this.phasor.increment);
+        }
+
+        // float32 nextTriangle(float32 modulation)
+        // {
+        //     this.accumulator = this.phasor.increment * this.nextSquare()
+        //                         + this.accumulator * (1.0f - (0.25f * this.phasor.increment));
+
+        //     return this.accumulator * 4.0f;
+        // }
+    }
+
+
+
+    processor PhaseModulatedPolyblepOscillator (using FrameType,
+                                  Shape initialShape = Shape::sawtoothUp,
+                                  float32 initialFrequency = 440.0f)
+    {
+        input event float32 frequencyIn    [[ name: "Frequency", min: 0, max: 24000.0f, init: 440.0f, unit: "Hz" ]];
+        input event float32 shapeIn        [[ name: "Shape",     min: 0, max: 4,        init: 0,      text: "Sine|Square|Ramp Up|Ramp Down"]];
+        input event float32 modAmtIn [[name: "PM Amt", min: 0, max: 1, init: 1.0, unit: ""]];
+        input stream float32 modulatorIn; 
+
+
+        output stream FrameType out;
+
+        //==============================================================================
+        void init()                             { polyblep.setFrequency (processor.frequency, initialFrequency); }
+        event frequencyIn (float newFrequency)  { polyblep.setFrequency (processor.frequency, newFrequency); }
+        event shapeIn (float32 newShape)
+        {
+            let v = int32 (floor (newShape));
+
+            if (v == 0)         currentShape = Shape::sine;
+            // else if (v == 1)    currentShape = Shape::triangle;
+            else if (v == 1)    currentShape = Shape::square;
+            else if (v == 2)    currentShape = Shape::sawtoothUp;
+            else                currentShape = Shape::sawtoothDown;
+        }
+
+        PolyblepState polyblep;
+        Shape currentShape = initialShape;
+
+        float32 modAmt = 1; 
+        event modAmtIn (float32 m) { modAmt = m ;}
+
+        void main()
+        {
+            loop
+            {
+                if (currentShape == Shape::sine)              out <- polyblep.nextSine(modAmt * modulatorIn);
+                // else if (currentShape == Shape::triangle)     out <- polyblep.nextTriangle(modulation);
+                else if (currentShape == Shape::square)       out <- polyblep.nextSquare(modAmt * modulatorIn);
+                else if (currentShape == Shape::sawtoothUp)   out <- polyblep.nextSawtooth(modAmt * modulatorIn);
+                else if (currentShape == Shape::sawtoothDown) out <- polyblep.nextSawtooth(modAmt * modulatorIn);
+
+                advance();
+            }
+        }
+    }
+
+}
+
+

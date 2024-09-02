@@ -1,0 +1,120 @@
+graph Synth  [[main]]
+{
+    input event std::midi::Message midiIn;
+    input voice.*;
+    input envelope.attackSecondsEvent; 
+    input envelope.releaseSecondsEvent;
+
+    output stream float out;
+
+
+    node
+    {
+        envelope = Envelopes::ASR;
+        voice = Voice; 
+    }
+
+    connection
+    {
+        // Convert the midi message to a our std::notes messages and forward to the voice allocator
+        midiIn -> std::midi::MPEConverter -> voice.eventIn;
+        midiIn -> std::midi::MPEConverter -> envelope.noteEvent;
+
+        // Sum the voices audio out to the output
+        envelope.gainOut * voice.out  -> out;
+    }
+}
+
+
+processor SoftClip{
+    input stream float32 in; 
+    output stream float32 out; 
+
+    input event bool On [[ name: "Soft Clip", init:false, text: "Off|On"]];
+
+    input event float driveIn [[name: "Drive", min:0, max:36, unit:"dB"]];
+
+    event On(bool s){
+        satOn = s;
+    }
+
+    event driveIn(float d){
+        drive = d;
+    }
+
+    bool satOn; 
+    float32 drive = 0;
+
+    void main(){
+        loop {
+            if (satOn){
+                var gain = float(10**(0.05*drive));
+                out <- tanh(gain*in);
+            }
+            else{
+                out <- in;
+            }
+            advance();
+        }
+    }
+}
+
+graph Voice
+{
+    input carrier.modAmtIn;
+    input carrier.feedbackIn;
+    input frequencyMultiplier.ratio;
+    input softClip.On;
+    input softClip.driveIn;
+    // input carrier.shapeIn;
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+    output stream float out;
+
+    node
+    {
+        noteToFrequency = NoteToFrequency;
+        frequencyMultiplier = FrequencyMultiplier;
+        carrier = MyOscillators::PhaseModulatedSineOscillator(float32);
+        modulator = MyOscillators::Sine(float32);
+        softClip = SoftClip;
+    }
+
+    connection
+    {
+        eventIn -> noteToFrequency;
+        noteToFrequency -> carrier.frequencyIn;
+        noteToFrequency -> frequencyMultiplier.frequencyIn; 
+        frequencyMultiplier -> modulator.frequencyIn;
+
+
+        modulator.out -> carrier.modulatorIn;
+        carrier.out -> softClip.in; 
+        softClip.out ->out;
+    }
+}
+
+processor NoteToFrequency
+{
+    input event std::notes::NoteOn eventIn;
+    output event float32 frequencyOut;
+
+    event eventIn (std::notes::NoteOn e)
+    {
+        frequencyOut <- std::notes::noteToFrequency (e.pitch);
+    }
+}
+
+processor FrequencyMultiplier
+{
+    input event float frequencyIn; 
+    input event float ratio [[ name: "Ratio", min: 2, max: 10, init: 1]];
+    output event float32 frequencyOut;
+
+    float r = 1; 
+    event ratio (float newRatio) {r = newRatio;}
+
+    event frequencyIn (float f)
+    {
+        frequencyOut <- r * f;
+    }
+}

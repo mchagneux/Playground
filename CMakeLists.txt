@@ -13,8 +13,16 @@ cmake_minimum_required(VERSION 3.22)
 # The top-level CMakeLists.txt file for a project must contain a literal, direct call to the
 # `project()` command. `project()` sets up some helpful variables that describe source/binary
 # directories, and the current project version. This is a standard CMake command.
+option(NNITEMPLATE_WITH_INSTALL "Add install targets" OFF)
 
 project(Playground VERSION 0.0.1)
+
+
+# if(NNITEMPLATE_WITH_INSTALL)
+#     set(ANIRA_WITH_INSTALL ON)
+# endif()
+
+# add_subdirectory(3rd_party/anira)
 
 set (TARGET_NAME ${PROJECT_NAME})
 
@@ -48,26 +56,10 @@ if(NOT CMAJ_VERSION)
 endif()
 
 
-
-# find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
-# or
-
 set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
 
 add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in a subdirectory called JUCE
-
-# If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
-# system. This setup should be done before calling `juce_add_plugin`.
-
-# juce_set_vst2_sdk_path(...)
-# juce_set_aax_sdk_path(...)
-
-# `juce_add_plugin` adds a static library target with the name passed as the first argument
-# (${TARGET_NAME} here). This target is a normal CMake target, but has a lot of extra properties set
-# up by default. As well as this shared code static library, this function adds targets for each of
-# the formats specified by the FORMATS arguments. This function accepts many optional arguments.
-# Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
-
+# add_subdirectory(assets)
 
 Include (FetchContent)
 FetchContent_Declare (melatonin_inspector
@@ -90,18 +82,16 @@ juce_add_plugin(${TARGET_NAME}
     MICROPHONE_PERMISSION_ENABLED TRUE
 )        # The name of the final executable, which can differ from the target name
 
-# `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
-# into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
-# this header will be automatically added to the target. The main function of the JuceHeader is to
-# include all your JUCE module headers; if you're happy to include module headers directly, you
-# probably don't need to call this.
-
 juce_generate_juce_header(${TARGET_NAME})
 
 # `target_sources` adds source files to a target. We pass the target that needs the sources as the
 # first argument, then a visibility parameter for the sources which should normally be PRIVATE.
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
+
+
+set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/modules/GuitarLSTM/tensorflow-version/models/")
+set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/modules/GuitarLSTM/pytorch-version/models/")
 
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
@@ -112,6 +102,8 @@ target_compile_definitions(${TARGET_NAME}
         JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_WEB_BROWSER=0)
+        # GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+        # GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}")
 
 
 add_compile_definitions (
@@ -128,13 +120,17 @@ target_sources(${TARGET_NAME} PRIVATE ${SOURCES})# ${RNBO_SOURCES})
 
 
 # Add include directories for all folders in the source
-file(GLOB_RECURSE source_dirs LIST_DIRECTORIES true ${CMAKE_CURRENT_LIST_DIR}/source/*)
+file(GLOB_RECURSE SOURCE_DIRS LIST_DIRECTORIES true ${CMAKE_CURRENT_LIST_DIR}/source/*)
+list(APPEND SOURCE_DIRS ${CMAKE_CURRENT_LIST_DIR}/source)
 
-foreach (dir ${source_dirs})
-    if (IS_DIRECTORY ${dir})
-        target_include_directories(${TARGET_NAME} PRIVATE ${dir})
+foreach (DIR ${SOURCE_DIRS})
+    if (IS_DIRECTORY ${DIR})
+        target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
     endif ()
 endforeach ()
+
+# Make the folder structure visible in IDEs like Xcode
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX "source" FILES ${SOURCES})
 
 # target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/cmajor)
 # target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/choc)
@@ -173,6 +169,8 @@ MAKE_CMAJ_LIBRARY (
 
 target_link_libraries(${TARGET_NAME}
     PRIVATE
+        # BinaryData
+        # anira::anira
         cmajor_lib
         juce::juce_audio_utils
         melatonin_inspector

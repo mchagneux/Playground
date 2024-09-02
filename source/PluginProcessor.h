@@ -4,7 +4,6 @@
 #include <JuceHeader.h>
 #include "CmajorProcessor.h"
 
-
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
 {
@@ -48,7 +47,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     CmajorProcessor& getCmajorProcessor(){
-        return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
+        return *cmajorProcessor;
+        // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
     }
 
     BusesProperties getBusesProperties() 
@@ -63,46 +63,53 @@ public:
                     ;
     }
 
-    void initialiseGraph()
-    {
-        mainProcessor->clear();
+    // void initialiseGraph()
+    // {
+    //     mainProcessor->clear();
 
-        audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
-        midiInputNode   = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::midiInputNode));
-
-
-        auto patch = std::make_shared<cmaj::Patch>();
-        patch->setAutoRebuildOnFileChange (true);
-        patch->createEngine = +[] { return cmaj::Engine::create(); };
-
-        cmajorGeneratorNode = mainProcessor->addNode(std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch)));
-
-        connectAudioNodes();
-        connectMidiNodes();
+    //     audioInputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioInputNode));
+    //     audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
+    //     midiInputNode   = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::midiInputNode));
 
 
-    }
+    //     auto patch = std::make_shared<cmaj::Patch>();
+    //     patch->setAutoRebuildOnFileChange (true);
+    //     patch->createEngine = +[] { return cmaj::Engine::create(); };
 
-    void connectAudioNodes()
-    {
-        for (int channel = 0; channel < 2; ++channel)
-            mainProcessor->addConnection ({ { cmajorGeneratorNode->nodeID,  channel },
-                                            { audioOutputNode->nodeID, channel } });
-    }
+    //     // cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));
+    //     cmajorGeneratorNode = mainProcessor->addNode(std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch)));
 
-    void connectMidiNodes()
-    {
-        mainProcessor->addConnection ({ { midiInputNode->nodeID,  juce::AudioProcessorGraph::midiChannelIndex },
-                                        { cmajorGeneratorNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex } });
-    }
+    //     connectAudioNodes();
+    //     connectMidiNodes();
+
+
+    // }
+
+    // void connectAudioNodes()
+    // {
+    //     for (int channel = 0; channel < 2; ++channel){
+    //         mainProcessor->addConnection ({ { audioInputNode->nodeID,  channel },
+    //                                         { cmajorGeneratorNode->nodeID, channel } });
+
+    //         mainProcessor->addConnection ({ { cmajorGeneratorNode->nodeID,  channel },
+    //                                         { audioOutputNode->nodeID, channel } });
+    //     }
+    // }
+
+    // void connectMidiNodes()
+    // {
+    //     mainProcessor->addConnection ({ { midiInputNode->nodeID,  juce::AudioProcessorGraph::midiChannelIndex },
+    //                                     { cmajorGeneratorNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex } });
+    // }
 
 
 private:
-    Node::Ptr audioOutputNode;
-    Node::Ptr midiInputNode;
-    Node::Ptr cmajorGeneratorNode;
-
-    std::unique_ptr<AudioProcessorGraph> mainProcessor;
+    // Node::Ptr audioInputNode;
+    // Node::Ptr audioOutputNode;
+    // Node::Ptr midiInputNode;
+    // Node::Ptr cmajorGeneratorNode;
+    std::unique_ptr<CmajorProcessor> cmajorProcessor;
+    // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
