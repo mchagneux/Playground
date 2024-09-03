@@ -199,30 +199,110 @@ namespace MyOscillators {
 
         input event float32 feedbackIn [[name: "Feedback", min:-1, max:1, init:0, unit:""]];
         input event float32 frequencyIn [[ name: "Frequency", min: 0, max: 24000.0f, init: 440.0f, unit: "Hz" ]];
-        input event float32 modAmtIn [[name: "PM Amt", min: 0, max: 1, init: 0.2, unit: ""]];
+        input event float32 modAmtIn [[name: "PhaseMod Amt", min: 0, max: 1, init: 0.2, unit: ""]];
+        input event bool numVoicesIn [[name: "Unison", init:false, text:"Off|On"]];
+        input event float32 detuneAmtIn [[name: "Detune Range", min:0.0f, max:1.0f, init:0.0f, unit:"st"]];
+        input event float32 contourAmtIn [[name: "Contour Amt", min: 0, max: 0.1, init: 0.01, unit: ""]];
+
+        input stream float32 contourIn; 
         input stream float32 modulatorIn; 
         output stream FrameType out;
 
+        let maxNumVoices = 2; 
+        PhasorState[maxNumVoices] phasors; 
+        float32[maxNumVoices] detuneAmts; 
+        int32 numActiveVoices = 1; 
 
-        PhasorState phasor; 
+        void init()
+        { 
+            for(int voiceNb; voiceNb < maxNumVoices; voiceNb++){
+                detuneAmts[wrap<maxNumVoices>(voiceNb)] = 0;
+                phasors[wrap<maxNumVoices>(voiceNb)].setFrequency (processor.frequency, initialFrequency + detuneAmts[wrap<maxNumVoices>(voiceNb)]); 
+            }
+        }
 
+        event frequencyIn (float32 f){
+            currentFrequency = f; 
+            updatePhasors();
+        }
+
+
+        void updatePhasors()
+        {
+            for(int voiceNb; voiceNb < maxNumVoices; voiceNb++){
+                phasors[wrap<maxNumVoices>(voiceNb)].setFrequency (processor.frequency, currentFrequency + detuneAmts[wrap<maxNumVoices>(voiceNb)]); 
+            }
+        }
+
+        void updateDetunes()
+        {
+            if (detuneRange == 0){
+                for (int voiceNb; voiceNb < numActiveVoices; voiceNb++){
+                    detuneAmts[wrap<maxNumVoices>(voiceNb)] = 0;
+                }
+            }
+
+            else if (numActiveVoices == 1){ detuneAmts[0] = detuneRange; }
+
+            else
+            { 
+                for (int voiceNb; voiceNb < numActiveVoices; voiceNb++){
+                    detuneAmts[wrap<maxNumVoices>(voiceNb)] = detuneRange * (2.0f * float(voiceNb) / float((numActiveVoices - 1)) - 1.0f);
+                }
+
+                for (int voiceNb=numActiveVoices ; voiceNb < maxNumVoices; voiceNb ++){
+                    detuneAmts[wrap<maxNumVoices>(voiceNb)] = 0;
+                }
+            }
+        }
+
+        float32 stToFreq(float32 st){
+            return st * (float32) (2**(1/12));
+        }
+
+        event detuneAmtIn(float32 d) { 
+            detuneRange = stToFreq(d); 
+            updateDetunes();
+            updatePhasors();
+        }
+
+        event numVoicesIn(bool b)
+        {
+            if (b) {numActiveVoices = 2;}
+            else {numActiveVoices = 1;}
+
+            for (int voiceNb; voiceNb < maxNumVoices; voiceNb ++){
+                updateDetunes();
+                updatePhasors();
+            }
+        }
+        
+        
         float32 modAmt = 1; 
-        event modAmtIn (float32 m) { modAmt = m ; }
+        float32 contourAmt = 1;
+        event modAmtIn (float32 m) {modAmt = m ;}
+        event contourAmtIn (float32 c) {contourAmt = c ;}
 
+        float32 detuneRange = 0; 
+        float32 currentFrequency = 0;
         float32 feedbackAmt = 0;
-        float32 fb = 0;
+        float32[maxNumVoices] feedbacks;
         event feedbackIn(float32 f) {feedbackAmt = f;} 
 
-
-        void init()                                 { phasor.setFrequency (processor.frequency, initialFrequency); }
-        event frequencyIn (float32 newFrequency)    { phasor.setFrequency (processor.frequency, newFrequency); }
-        
         void main()
         {
             loop
             {
-                fb = FrameType (sin ((twoPi) * (phasor.next()  + modulatorIn * modAmt + 0.3 * feedbackAmt * fb)));
-                out <- fb;
+                float32 result = 0.0f; 
+                for (int voiceNb; voiceNb < numActiveVoices; voiceNb++)
+                {
+                    feedbacks[wrap<maxNumVoices>(voiceNb)] = FrameType (sin ((twoPi) * (phasors[wrap<maxNumVoices>(voiceNb)].next() + contourIn * contourAmt + modulatorIn * modAmt + 0.3 * feedbackAmt * feedbacks[wrap<maxNumVoices>(voiceNb)])));
+                    result += feedbacks[wrap<maxNumVoices>(voiceNb)];
+                }
+                for (int voiceNb = numActiveVoices; voiceNb < maxNumVoices; voiceNb++){
+                    phasors[wrap<maxNumVoices>(voiceNb)].next();
+                }
+                out <- result / (float) (numActiveVoices) ; 
                 advance();
             }
         }

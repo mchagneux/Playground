@@ -172,7 +172,6 @@ public:
         return patch->isPlayable();
     }
 
-
     std::function<void(const char*)> handleConsoleMessage;
     std::function<void(CmajorProcessor&)> patchChangeCallback;
 

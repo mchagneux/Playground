@@ -26,7 +26,8 @@ graph Synth  [[main]]
 }
 
 
-processor SoftClip{
+processor SoftClip
+{
     input stream float32 in; 
     output stream float32 out; 
 
@@ -63,9 +64,19 @@ graph Voice
 {
     input carrier.modAmtIn;
     input carrier.feedbackIn;
-    input frequencyMultiplier.ratio;
+    input carrier.numVoicesIn; 
+    input carrier.detuneAmtIn; 
+    input carrier.contourAmtIn;
+    input subMix.subGaindBIn;
+    input contour.frequencyIn; 
+    input frequencyMultiplier.ratioIn;
     input softClip.On;
+    input filter.filterFreqIn;
+    input filter.filterQIn; 
+    input filter.filterOn;
     input softClip.driveIn;
+    input event float32 contourFreq [[name: "Contour Freq", min:1000.0f, max:20000.0f, init:5000.0f, unit:"Hz"]]
+
     // input carrier.shapeIn;
     input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
     output stream float out;
@@ -76,22 +87,86 @@ graph Voice
         frequencyMultiplier = FrequencyMultiplier;
         carrier = MyOscillators::PhaseModulatedSineOscillator(float32);
         modulator = MyOscillators::Sine(float32);
+        contour = MyOscillators::Sine(float32);
+        sub = MyOscillators::Sine(float32);
+        filter = BypassableFilter;
         softClip = SoftClip;
+        subMix = SubMix(float32);
     }
+
 
     connection
     {
         eventIn -> noteToFrequency;
         noteToFrequency -> carrier.frequencyIn;
         noteToFrequency -> frequencyMultiplier.frequencyIn; 
+        noteToFrequency -> sub.frequencyIn;
         frequencyMultiplier -> modulator.frequencyIn;
-
-
+        contour.out -> carrier.contourIn;
         modulator.out -> carrier.modulatorIn;
-        carrier.out -> softClip.in; 
-        softClip.out ->out;
+        carrier.out -> filter.in; 
+        filter.out -> softClip.in;
+        sub.out -> subMix.subIn;
+        softClip.out -> subMix.mixIn;
+        subMix.out -> out; 
+
     }
 }
+
+
+processor BypassableFilter
+{ 
+    input stream float in; 
+    output stream float out; 
+
+    input event float32 filterFreqIn [[name: "Cutoff", min:20.0f, max:1000.0f, init:100.0f, unit:"Hz"]];
+    input event float32 filterQIn [[name: "Q", min:0.7f, max:10.0f, init:1.0f]];
+    input event bool filterOn [[name: "Post Filter", init:false, text:"Off|On"]];
+    event filterOn (bool b) {bypassed = !b;}
+    event filterFreqIn (float32 f) {internalFilter.frequency <- f;}
+
+    event filterQIn(float32 q){internalFilter.q <- q;}
+    node internalFilter = std::filters (float)::tpt::svf::Processor;
+    bool bypassed = true; 
+
+    void main(){
+        loop {
+            if (bypassed){
+                out <- in; 
+            }
+            else {
+                internalFilter.in <- in; 
+                out <- internalFilter.out;
+                internalFilter.advance();
+            }
+            advance();
+        }
+    }
+ 
+}
+
+processor SubMix (using FrameType)
+{
+    /// These two input streams will be added together after being multiplied by
+    /// their corresponding gain input streams.
+    input event FrameType subGaindBIn [[name: "Sub Gain", min:-100, max:0, init:-100, unit:"dB"]]; 
+    input stream FrameType mixIn, subIn;
+    output stream FrameType out;
+
+
+    FrameType subGain = std::levels::dBtoGain(-100.0f); 
+    event subGaindBIn (FrameType d) {subGain = std::levels::dBtoGain(d);}
+
+    void main()
+    {
+        loop
+        {
+            out <- mixIn + subIn * subGain;
+            advance();
+        }
+    }
+}
+
 
 processor NoteToFrequency
 {
@@ -107,14 +182,21 @@ processor NoteToFrequency
 processor FrequencyMultiplier
 {
     input event float frequencyIn; 
-    input event float ratio [[ name: "Ratio", min: 2, max: 10, init: 1]];
+    input event float ratioIn [[ name: "Ratio", min: 1, max: 10, init: 1, step:1]];
     output event float32 frequencyOut;
 
-    float r = 1; 
-    event ratio (float newRatio) {r = newRatio;}
+    float currentRatio = 1; 
+    float currentFreq = 0;
+    
+    event ratioIn (float r) 
+    {
+        currentRatio = r;
+        frequencyOut <- currentRatio * currentFreq;
+    }
 
     event frequencyIn (float f)
     {
-        frequencyOut <- r * f;
+        currentFreq = f; 
+        frequencyOut <- currentRatio * currentFreq;
     }
 }
