@@ -3,18 +3,33 @@
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
-     : AudioProcessor (getBusesProperties())
-{
-        auto patch = std::make_shared<cmaj::Patch>();
-        patch->setAutoRebuildOnFileChange (true);
-        patch->createEngine = +[] { return cmaj::Engine::create(); };
+     : AudioProcessor (getBusesProperties()), 
+    //  parameters (*this, nullptr, juce::Identifier (getName()), NeuralParameters::createParameterLayout())
+     parameters (*this, nullptr, juce::Identifier (getName()), {}) //NeuralParameters::createParameterLayout())
 
-        cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));    
+{
+#if PERFETTO
+    MelatoninPerfetto::get().beginSession();
+#endif
+
+
+    auto patch = std::make_shared<cmaj::Patch>();
+    patch->setAutoRebuildOnFileChange (true);
+    patch->createEngine = +[] { return cmaj::Engine::create(); };
+    cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
+
+
+
+
+    // cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));   
+    // neuralProcessor = std::make_unique<NeuralProcessor>(getBusesProperties(), parameters);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
-    
+#if PERFETTO
+    MelatoninPerfetto::get().endSession();
+#endif
 }
 
 //==============================================================================
@@ -94,8 +109,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     //     node->getProcessor()->enableAllBuses();
 
     // mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
-    cmajorProcessor->prepareToPlay (sampleRate, samplesPerBlock);
-
+    cmajorJITLoaderPlugin->prepareToPlay (sampleRate, samplesPerBlock);
+    // neuralProcessor->prepareToPlay(sampleRate, samplesPerBlock);
 
 }
 
@@ -104,7 +119,8 @@ void AudioPluginAudioProcessor::releaseResources()
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
     // mainProcessor->releaseResources();
-    cmajorProcessor->releaseResources();
+    cmajorJITLoaderPlugin->releaseResources();
+    // neuralProcessor->releaseResources();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -137,7 +153,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused (midiMessages);
 
     // mainProcessor->processBlock (buffer, midiMessages);
-    cmajorProcessor->processBlock(buffer, midiMessages);
+    cmajorJITLoaderPlugin->processBlock(buffer, midiMessages);
+    // neuralProcessor->processBlock(buffer, midiMessages);
 }
 
 //==============================================================================

@@ -13,20 +13,46 @@ cmake_minimum_required(VERSION 3.22)
 # The top-level CMakeLists.txt file for a project must contain a literal, direct call to the
 # `project()` command. `project()` sets up some helpful variables that describe source/binary
 # directories, and the current project version. This is a standard CMake command.
-option(NNITEMPLATE_WITH_INSTALL "Add install targets" OFF)
+
+
+# option(NNITEMPLATE_WITH_INSTALL "Add install targets" ON)
 
 project(Playground VERSION 0.0.1)
 
+
+if(APPLE)
+set(FORMATS_TO_BUILD AU VST3 Standalone)
+else()
+set(FORMATS_TO_BUILD VST3 Standalone)
+endif()
+
+set (TARGET_NAME ${PROJECT_NAME})
+
+# Sets the minimum macOS version
+if (APPLE)
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum version of the target platform" FORCE) 
+	if(CMAKE_OSX_DEPLOYMENT_TARGET)
+		message("The minimum macOS version is set to " $CACHE{CMAKE_OSX_DEPLOYMENT_TARGET}.)
+	endif()
+endif ()
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # if(NNITEMPLATE_WITH_INSTALL)
 #     set(ANIRA_WITH_INSTALL ON)
 # endif()
 
-# add_subdirectory(3rd_party/anira)
+# ==================================================<============================
+# Add the anira library
+# ==============================================================================
 
-set (TARGET_NAME ${PROJECT_NAME})
+# Either add the anira library as a git submodule and use add_subdirectory
+add_subdirectory(3rd_party/anira)
+
 
 include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
+
 
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
@@ -59,41 +85,66 @@ endif()
 set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
 
 add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in a subdirectory called JUCE
-# add_subdirectory(assets)
 
 Include (FetchContent)
+
+
+
+FetchContent_Declare (melatonin_perfetto
+  GIT_REPOSITORY https://github.com/sudara/melatonin_perfetto.git
+  GIT_TAG origin/main)
+
+FetchContent_MakeAvailable (melatonin_perfetto)
+
+
+
 FetchContent_Declare (melatonin_inspector
   GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
   GIT_TAG origin/main
   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
 FetchContent_MakeAvailable (melatonin_inspector)
 
+
+
+# add_subdirectory(assets)
+
+
+
 juce_add_plugin(${TARGET_NAME}
     PRODUCT_NAME "Playground"
     BUNDLE_ID ""
     COMPANY_NAME "RM_Estali"
     COMPANY_COPYRIGHT ""
-    PLUGIN_CODE Cmaj
-    FORMATS Standalone VST3
+    PLUGIN_CODE Playground
+    FORMATS ${FORMATS_TO_BUILD}
     IS_SYNTH TRUE
-    COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
+    COPY_PLUGIN_AFTER_BUILD FALSE        # Should the plugin be installed to a default location after building?
     NEEDS_MIDI_INPUT TRUE
+    VST3_AUTO_MANIFEST FALSE
     NEEDS_MIDI_OUTPUT FALSE
     MICROPHONE_PERMISSION_ENABLED TRUE
 )        # The name of the final executable, which can differ from the target name
 
 juce_generate_juce_header(${TARGET_NAME})
 
-# `target_sources` adds source files to a target. We pass the target that needs the sources as the
-# first argument, then a visibility parameter for the sources which should normally be PRIVATE.
-# Finally, we supply a list of source files that will be built into the target. This is a standard
-# CMake command.
 
 
-set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/modules/GuitarLSTM/tensorflow-version/models/")
-set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/modules/GuitarLSTM/pytorch-version/models/")
+# Set the model path as compile definition for the build interface
+set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
+set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
 
-target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+
+add_compile_definitions(
+        GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
+        STEERABLENAFX_MODELS_PATH_TENSORFLOW="${STEERABLENAFX_MODELS_PATH_TENSORFLOW}"
+        STEERABLENAFX_MODELS_PATH_PYTORCH="${STEERABLENAFX_MODELS_PATH_PYTORCH}"
+        STATEFULLSTM_MODELS_PATH_TENSORFLOW="${STATEFULLSTM_MODELS_PATH_TENSORFLOW}"
+        STATEFULLSTM_MODELS_PATH_PYTORCH="${STATEFULLSTM_MODELS_PATH_PYTORCH}"
+)
+add_compile_definitions(MODEL_TO_USE=2) # GuitarLSTM
+
+# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
 
 target_compile_definitions(${TARGET_NAME}
@@ -101,9 +152,13 @@ target_compile_definitions(${TARGET_NAME}
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
         JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
         JUCE_VST3_CAN_REPLACE_VST2=0
-        JUCE_WEB_BROWSER=0)
-        # GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-        # GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}")
+        JUCE_WEB_BROWSER=0
+        DONT_SET_USING_JUCE_NAMESPACE=1
+            # Backend-specific definitions
+        $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
+        $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
+        $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>)
+
 
 
 add_compile_definitions (
@@ -112,12 +167,12 @@ add_compile_definitions (
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
 )
 
+
 # Add all source files to file list
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/source/*.h)
 
 
 target_sources(${TARGET_NAME} PRIVATE ${SOURCES})# ${RNBO_SOURCES})
-
 
 # Add include directories for all folders in the source
 file(GLOB_RECURSE SOURCE_DIRS LIST_DIRECTORIES true ${CMAKE_CURRENT_LIST_DIR}/source/*)
@@ -143,8 +198,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_include_directories(${TARGET_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
-    # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTsRYPOINT=1)
-
+    # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
 endif ()
 
 
@@ -167,12 +221,39 @@ MAKE_CMAJ_LIBRARY (
 )
 
 
+# Add the path to the anira library as cmake prefix path and find the package
+# list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/anira_lib")
+# find_package(anira REQUIRED)
+
 target_link_libraries(${TARGET_NAME}
     PRIVATE
         # BinaryData
-        # anira::anira
+        juce::juce_dsp
+        anira::anira
         cmajor_lib
         juce::juce_audio_utils
+        Melatonin::Perfetto
         melatonin_inspector
+
 )
 
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_ONNX "${ANIRA_ONNXRUNTIME_SHARED_LIB_PATH}/*.dll")
+list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_ONNX})
+
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_TFLITE "${ANIRA_TENSORFLOWLITE_SHARED_LIB_PATH}/*.dll")
+list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_TFLITE})
+
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_LIBTORCH "${ANIRA_LIBTORCH_SHARED_LIB_PATH}*.dll")
+list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_LIBTORCH})
+
+message(dlls=${NECESSARY_DLLS})
+if (MSVC)
+	foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
+		string(CONCAT CONCATENATED_TARGET ${TARGET_NAME}_${FORMAT})
+		add_custom_command(TARGET ${CONCATENATED_TARGET}
+				POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				${NECESSARY_DLLS}
+				$<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
+	endforeach()
+endif (MSVC)

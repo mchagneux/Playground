@@ -6,5 +6,6 @@
         "workbench.action.tasks.configureTaskRunner",
         "workbench.action.tasks.runTask"
     ],
-    "cmake.generator": "Ninja"
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": ["-DPERFETTO=OFF"]
 }

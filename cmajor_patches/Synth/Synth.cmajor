@@ -75,7 +75,7 @@ graph Voice
     input filter.filterQIn; 
     input filter.filterOn;
     input softClip.driveIn;
-    input event float32 contourFreq [[name: "Contour Freq", min:1000.0f, max:20000.0f, init:5000.0f, unit:"Hz"]]
+    input event float32 contourFreq [[name: "Contour Freq", min:1000.0f, max:20000.0f, init:5000.0f, unit:"Hz"]];
 
     // input carrier.shapeIn;
     input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;

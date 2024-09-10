@@ -4,3 +4,6 @@
 [submodule "3rd_party/cmajor"]
 	path = 3rd_party/cmajor
 	url = git@github.com:cmajor-lang/cmajor.git
+[submodule "3rd_party/anira"]
+	path = 3rd_party/anira
+	url = git@github.com:tu-studio/anira.git

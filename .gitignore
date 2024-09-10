@@ -1,3 +1,5 @@
 .cache
 build/
-/3rd_party/GuitarLSTM/*/
+models/
+assets/
+3rd_party/GuitarLSTM

@@ -108,7 +108,7 @@ struct CmajorComponent : public juce::Component,
     // }
 
     void paint(juce::Graphics& g) override {
-        g.fillAll (juce::Colours::white);
+        g.fillAll (juce::Colours::black);
 
     }
 

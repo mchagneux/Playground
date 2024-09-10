@@ -2,7 +2,12 @@
 
 // #include <juce_audio_processors/juce_audio_processors.h>
 #include <JuceHeader.h>
-#include "CmajorProcessor.h"
+// #include "CmajorProcessor.h"
+// #include "neural/NeuralProcessor.h"
+#include "cmaj_JUCEPlugin.h"
+// #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_JUCEPlugin.h"
+
+#include <melatonin_perfetto/melatonin_perfetto.h>
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -46,10 +51,19 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    CmajorProcessor& getCmajorProcessor(){
-        return *cmajorProcessor;
+    JITLoaderPlugin& getCmajorProcessor(){
+        return *cmajorJITLoaderPlugin;
         // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
     }
+
+    // NeuralProcessor& getNeuralProcessor(){
+    //     return *neuralProcessor;
+    //     // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
+    // }
+
+
+    juce::AudioProcessorValueTreeState& getValueTreeState() { return parameters; }
+
 
     BusesProperties getBusesProperties() 
     {
@@ -108,7 +122,16 @@ private:
     // Node::Ptr audioOutputNode;
     // Node::Ptr midiInputNode;
     // Node::Ptr cmajorGeneratorNode;
-    std::unique_ptr<CmajorProcessor> cmajorProcessor;
+#if PERFETTO
+    std::unique_ptr<perfetto::TracingSession> tracingSession;
+#endif
+
+    juce::AudioProcessorValueTreeState parameters;
+    // std::unique_ptr<CmajorProcessor> cmajorProcessor;
+    std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin; 
+
+    // std::unique_ptr<NeuralProcessor> neuralProcessor; 
+    // std::unique_ptr<NeuralProcessor> neuralProcessor;
     // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
