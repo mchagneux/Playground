@@ -4,7 +4,7 @@
 #include <JuceHeader.h>
 // #include "CmajorProcessor.h"
 #include "neural/NeuralProcessor.h"
-#include "cmaj_JUCEPlugin.h"
+#include "cmajor/CmajorProcessor.h"
 // #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_JUCEPlugin.h"
 
 // #include <melatonin_perfetto/melatonin_perfetto.h>

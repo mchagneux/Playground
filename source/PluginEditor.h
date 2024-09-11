@@ -1,7 +1,6 @@
 #pragma once
 #include "neural/NeuralUI.h"
 #include "PluginProcessor.h"
-#include "cmaj_JUCEPlugin.h"
 #include "melatonin_inspector/melatonin_inspector.h"
 
 //==============================================================================
