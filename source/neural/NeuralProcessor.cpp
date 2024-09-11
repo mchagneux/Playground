@@ -1,28 +1,19 @@
 #include "./NeuralProcessor.h"
-#include "./NeuralParameters.h"
 
 //==============================================================================
 NeuralProcessor::NeuralProcessor(BusesProperties buses, juce::AudioProcessorValueTreeState& a) 
-        : AudioProcessor (buses),
-        parameters (a),
-#if MODEL_TO_USE == 1 || MODEL_TO_USE == 2
-        // The noneProcessor is not needed for inference, but for the round trip test to output audio when selecting the NONE backend. 
-        //It must be customized when default prePostProcessor is replaced by a custom one.
-        noneProcessor(inferenceConfig),
-        inferenceHandler(prePostProcessor, inferenceConfig, noneProcessor),
-#elif MODEL_TO_USE == 3
+        : AudioProcessor (buses), parameters(a),
         inferenceHandler(prePostProcessor, inferenceConfig),
-#endif
         dryWetMixer(32768) // 32768 samples of max latency compensation for the dry-wet mixer
 {
-    for (auto & parameterID : NeuralParameters::getPluginParameterList()) {
+    for (auto & parameterID : PluginParameters::getPluginParameterList()) {
         parameters.addParameterListener(parameterID, this);
     }
 }
 
 NeuralProcessor::~NeuralProcessor()
 {
-    for (auto & parameterID : NeuralParameters::getPluginParameterList()) {
+    for (auto & parameterID : PluginParameters::getPluginParameterList()) {
         parameters.removeParameterListener(parameterID, this);
     }
 }
@@ -115,7 +106,7 @@ void NeuralProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     dryWetMixer.setWetLatency(newLatency);
 
-    for (auto & parameterID : NeuralParameters::getPluginParameterList()) {
+    for (auto & parameterID : PluginParameters::getPluginParameterList()) {
         parameterChanged(parameterID, (float) parameters.getParameterAsValue(parameterID).getValue());
     }
 }
@@ -197,24 +188,32 @@ void NeuralProcessor::setStateInformation (const void* data, int sizeInBytes)
 }
 
 void NeuralProcessor::parameterChanged(const juce::String &parameterID, float newValue) {
-    if (parameterID == NeuralParameters::DRY_WET_ID.getParamID()) {
+    if (parameterID == PluginParameters::DRY_WET_ID.getParamID()) {
         dryWetMixer.setWetMixProportion(newValue);
-    } else if (parameterID == NeuralParameters::BACKEND_TYPE_ID.getParamID()) {
+    } else if (parameterID == PluginParameters::BACKEND_TYPE_ID.getParamID()) {
         const auto paramInt = static_cast<int>(newValue);
-        auto paramString = NeuralParameters::backendTypes.getReference(paramInt);
+        auto paramString = PluginParameters::backendTypes.getReference(paramInt);
 #ifdef USE_TFLITE
-        if (paramString == "TFLITE") inferenceHandler.setInferenceBackend(anira::TFLITE);
+        if (paramString == "TFLITE") {inferenceHandler.setInferenceBackend(anira::TFLITE);
+        std::cout << "TFLITE" << std::endl;}
 #endif
 #ifdef USE_ONNXRUNTIME
-        if (paramString == "ONNXRUNTIME") inferenceHandler.setInferenceBackend(anira::ONNX);
+        if (paramString == "ONNXRUNTIME") {inferenceHandler.setInferenceBackend(anira::ONNX);
+        std::cout << "ONNXRUNTIME" << std::endl;}
 #endif
 #ifdef USE_LIBTORCH
-        if (paramString == "LIBTORCH") inferenceHandler.setInferenceBackend(anira::LIBTORCH);
+        if (paramString == "LIBTORCH") {inferenceHandler.setInferenceBackend(anira::LIBTORCH);
+        std::cout << "LIBTORCH" << std::endl;}
 #endif
         if (paramString == "NONE") inferenceHandler.setInferenceBackend(anira::NONE);
     }
 }
-
+//==============================================================================
+// // This creates new instances of the plugin..
+// juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+// {
+//     return new NeuralProcessor();
+// }
 
 anira::InferenceManager &NeuralProcessor::getInferenceManager() {
     return inferenceHandler.getInferenceManager();

@@ -1,6 +1,6 @@
 #include "./NeuralParameters.h"
 
-juce::AudioProcessorValueTreeState::ParameterLayout NeuralParameters::createParameterLayout() {
+juce::AudioProcessorValueTreeState::ParameterLayout PluginParameters::createParameterLayout() {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
 
@@ -24,6 +24,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout NeuralParameters::createPara
     return { params.begin(), params.end() };
 }
 
-juce::StringArray NeuralParameters::getPluginParameterList() {
+juce::StringArray PluginParameters::getPluginParameterList() {
     return parameterList;
 }

@@ -1,7 +1,7 @@
 #pragma once
-#include "neural/NeuralUI.h"
+#include "neural/NeuralComponent.h"
 #include "PluginProcessor.h"
-#include "melatonin_inspector/melatonin_inspector.h"
+// #include "melatonin_inspector/melatonin_inspector.h"
 
 //==============================================================================
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor
@@ -19,7 +19,7 @@ private:
     // access the processor object that created it.
     AudioPluginAudioProcessor& processorRef;
     std::unique_ptr<juce::Component> cmajorEditor; 
-    std::unique_ptr<NeuralComponent> neuralComponent;
-    melatonin::Inspector inspector { *this };
+    std::unique_ptr<NeuralProcessorComponent> neuralComponent;
+    // melatonin::Inspector inspector { *this };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)
 };

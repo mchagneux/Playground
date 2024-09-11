@@ -106,7 +106,7 @@ FetchContent_MakeAvailable (melatonin_inspector)
 
 
 
-# add_subdirectory(assets)
+add_subdirectory(assets)
 
 
 
@@ -129,20 +129,30 @@ juce_generate_juce_header(${TARGET_NAME})
 
 
 
-# Set the model path as compile definition for the build interface
+
 set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
 set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
 
-
-add_compile_definitions(
-        GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
-        STEERABLENAFX_MODELS_PATH_TENSORFLOW="${STEERABLENAFX_MODELS_PATH_TENSORFLOW}"
-        STEERABLENAFX_MODELS_PATH_PYTORCH="${STEERABLENAFX_MODELS_PATH_PYTORCH}"
-        STATEFULLSTM_MODELS_PATH_TENSORFLOW="${STATEFULLSTM_MODELS_PATH_TENSORFLOW}"
-        STATEFULLSTM_MODELS_PATH_PYTORCH="${STATEFULLSTM_MODELS_PATH_PYTORCH}"
+target_compile_definitions(${TARGET_NAME}
+    PUBLIC
+    GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+    GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
 )
-add_compile_definitions(MODEL_TO_USE=2) # GuitarLSTM
+
+# # Set the model path as compile definition for the build interface
+# set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
+# set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
+
+
+# add_compile_definitions(
+#         GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+#         GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
+#         STEERABLENAFX_MODELS_PATH_TENSORFLOW="${STEERABLENAFX_MODELS_PATH_TENSORFLOW}"
+#         STEERABLENAFX_MODELS_PATH_PYTORCH="${STEERABLENAFX_MODELS_PATH_PYTORCH}"
+#         STATEFULLSTM_MODELS_PATH_TENSORFLOW="${STATEFULLSTM_MODELS_PATH_TENSORFLOW}"
+#         STATEFULLSTM_MODELS_PATH_PYTORCH="${STATEFULLSTM_MODELS_PATH_PYTORCH}"
+# )
+# add_compile_definitions(MODEL_TO_USE=2) # GuitarLSTM
 
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
@@ -154,10 +164,12 @@ target_compile_definitions(${TARGET_NAME}
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_WEB_BROWSER=0
         DONT_SET_USING_JUCE_NAMESPACE=1
+        GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}")
             # Backend-specific definitions
-        $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
-        $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
-        $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>)
+        # $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
+        # $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
+        # $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>)
 
 
 
@@ -228,22 +240,22 @@ MAKE_CMAJ_LIBRARY (
 
 
 # Add the path to the anira library as cmake prefix path and find the package
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-Windows-x86_64)
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.0-lib)
 find_package(anira REQUIRED)
 
 target_link_libraries(${TARGET_NAME}
     PRIVATE
-        # BinaryData
+        BinaryData
         juce::juce_dsp
         anira::anira
         cmajor_lib
         juce::juce_audio_utils
         # Melatonin::Perfetto
-        melatonin_inspector
+        # melatonin_inspector
 
 )
 
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-Windows-x86_64/lib/*.dll")
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.0-lib/lib/*.dll")
 list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS})
 
 foreach(FORMAT IN LISTS FORMATS_TO_BUILD)

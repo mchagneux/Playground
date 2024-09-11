@@ -7,5 +7,9 @@
         "workbench.action.tasks.runTask"
     ],
     "cmake.generator": "Ninja",
-    "cmake.configureArgs": ["-DPERFETTO=OFF"]
+    "cmake.configureArgs": [
+        "-DPERFETTO=OFF",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    ],
+    "git.ignoreLimitWarning": true
 }

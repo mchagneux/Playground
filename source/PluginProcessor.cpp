@@ -1,11 +1,11 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-
+#include "neural/NeuralParameters.h"
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (getBusesProperties()), 
     //  parameters (*this, nullptr, juce::Identifier (getName()), NeuralParameters::createParameterLayout())
-     parameters (*this, nullptr, juce::Identifier (getName()), {}) //NeuralParameters::createParameterLayout())
+     parameters (*this, nullptr, juce::Identifier (getName()), PluginParameters::createParameterLayout())
 
 {
 // #if PERFETTO
@@ -154,7 +154,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // mainProcessor->processBlock (buffer, midiMessages);
     cmajorJITLoaderPlugin->processBlock(buffer, midiMessages);
-    // neuralProcessor->processBlock(buffer, midiMessages);
+    neuralProcessor->processBlock(buffer, midiMessages);
 }
 
 //==============================================================================

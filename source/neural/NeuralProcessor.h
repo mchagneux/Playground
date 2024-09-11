@@ -1,18 +1,11 @@
 #pragma once
 
 #include <JuceHeader.h>
-
-
 #include <anira/anira.h>
 
-#include "../../3rd_party/anira/extras/desktop/models/cnn/CNNConfig.h"
-#include "../../3rd_party/anira/extras/desktop/models/cnn/CNNPrePostProcessor.h"
-#include "../../3rd_party/anira/extras/desktop/models/cnn/advanced-configs/CNNNoneProcessor.h" // This one is only needed for the round trip test, when selecting the None backend
-#include "../../3rd_party/anira/extras/desktop/models/hybrid-nn/HybridNNConfig.h"
-#include "../../3rd_party/anira/extras/desktop/models/hybrid-nn/HybridNNPrePostProcessor.h"
-#include "../../3rd_party/anira/extras/desktop/models/hybrid-nn/advanced-configs/HybridNNNoneProcessor.h" // Only needed for round trip test
-#include "../../3rd_party/anira/extras/desktop/models/stateful-rnn/StatefulRNNConfig.h"
-#include "../../3rd_party/anira/extras/desktop/models/stateful-rnn/StatefulRNNPrePostProcessor.h"
+#include "./NeuralParameters.h"
+#include "./ModelConfig.h"
+#include "./ModelPrePostProcessor.h"
 
 //==============================================================================
 class NeuralProcessor  : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
@@ -63,21 +56,10 @@ private:
     void monoToStereo(juce::AudioBuffer<float> &targetStereoBlock, juce::AudioBuffer<float> &sourceBlock);
 
 private:
-    juce::AudioProcessorValueTreeState& parameters;
     juce::AudioBuffer<float> monoBuffer;
-
-#if MODEL_TO_USE == 1
-    anira::InferenceConfig inferenceConfig = cnnConfig;
-    CNNPrePostProcessor prePostProcessor;
-    CNNNoneProcessor noneProcessor; // This one is only needed for the round trip test, when selecting the None backend
-#elif MODEL_TO_USE == 2
+    juce::AudioProcessorValueTreeState& parameters;
     anira::InferenceConfig inferenceConfig = hybridNNConfig;
     HybridNNPrePostProcessor prePostProcessor;
-    HybridNNNoneProcessor noneProcessor; // This one is only needed for the round trip test, when selecting the None backend
-#elif MODEL_TO_USE == 3
-    anira::InferenceConfig inferenceConfig = statefulRNNConfig;
-    StatefulRNNPrePostProcessor prePostProcessor;
-#endif
     anira::InferenceHandler inferenceHandler;
 
     juce::dsp::DryWetMixer<float> dryWetMixer;

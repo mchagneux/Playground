@@ -9,7 +9,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     // cmajorJITComponent = std::make_unique<juce::Component>(static_cast<juce::Component *>(processorRef.getCmajorProcessor().createEditor()));
-    neuralComponent = std::make_unique<NeuralComponent>(processorRef.getValueTreeState()); 
+    neuralComponent = std::make_unique<NeuralProcessorComponent>(processorRef.getValueTreeState()); 
     addAndMakeVisible(*neuralComponent);
     addAndMakeVisible(*cmajorEditor);
     // setResizable(true, true);
