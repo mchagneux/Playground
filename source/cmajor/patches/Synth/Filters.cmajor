@@ -1,0 +1,101 @@
+
+namespace Filters (using FrameType = float32,
+                        using CoefficientType = float32,
+                        int framesPerParameterUpdate = 32){
+
+    namespace onepole
+    {
+        namespace Mode
+        {
+            let lowPass = 0;
+            let highpass = 1;
+        }
+
+        Implementation create (int mode, float64 processorFrequency, float64 filterFrequency)
+        {
+            Implementation filter;
+
+            filter.setMode (mode);
+            filter.setFrequency (processorFrequency, filterFrequency);
+
+            return filter;
+        }
+
+        struct Implementation
+        {
+            CoefficientType b;
+            FrameType z1;
+            int mode;
+
+            void setFrequency (float64 processorFrequency, float64 filterFrequency)
+            {
+                filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                let period = 0.5 / processorFrequency;
+                let f = (2.0 * processorFrequency) * tan (twoPi * filterFrequency * period) * period;
+                this.b = CoefficientType (f / (1.0 + f));
+            }
+
+            void reset()                { this.z1 = (); }
+            void setMode (int mode)     { this.mode = mode; }
+
+            FrameType process (FrameType x)
+            {
+                let a = FrameType (this.b) * (x - this.z1);
+                let f = a + this.z1;
+                this.z1 = a + f;
+
+                if (this.mode == Mode::lowPass)
+                    return f;
+
+                return x - f;
+            }
+        }
+
+        processor Processor (int initialMode = Mode::lowPass,
+                            float initialFrequency = defaultFrequency)
+        {
+            input stream FrameType in;
+            output stream FrameType out;
+
+            input event
+            {
+                int   mode      [[ name: "Mode",        min: 0, max: 2, init: 0, text: "Lowpass|Highpass" ]];
+                float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+            }
+
+            event mode (int m)                {  updateFilter = true; filterMode = m; }
+            event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+
+            var filter = create (initialMode, processor.frequency, initialFrequency);
+
+            bool updateFilter = false;
+            float filterFrequency = initialFrequency;
+            int filterMode = initialMode;
+
+            void main()
+            {
+                loop
+                {
+                    if (updateFilter)
+                    {
+                        filter.setMode (filterMode);
+                        filter.setFrequency (processor.frequency, filterFrequency);
+                        updateFilter = false;
+                    }
+
+                    loop (framesPerParameterUpdate)
+                    {
+                        out <- filter.process (in);
+                        advance();
+                    }
+                }
+            }
+
+            void reset()
+            {
+                filter.reset();
+            }
+        }
+    }
+}
