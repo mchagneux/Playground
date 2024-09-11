@@ -36,8 +36,8 @@ if (APPLE)
 	endif()
 endif ()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+# set(CMAKE_CXX_STANDARD 20)
+# set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # if(NNITEMPLATE_WITH_INSTALL)
 #     set(ANIRA_WITH_INSTALL ON)
@@ -48,7 +48,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # ==============================================================================
 
 # Either add the anira library as a git submodule and use add_subdirectory
-add_subdirectory(3rd_party/anira)
+# add_subdirectory(3rd_party/anira)
 
 
 include(3rd_party/cmajor/tools/scripts/cmake_warning_flags)
@@ -90,11 +90,11 @@ Include (FetchContent)
 
 
 
-FetchContent_Declare (melatonin_perfetto
-  GIT_REPOSITORY https://github.com/sudara/melatonin_perfetto.git
-  GIT_TAG origin/main)
+# FetchContent_Declare (melatonin_perfetto
+#   GIT_REPOSITORY https://github.com/sudara/melatonin_perfetto.git
+#   GIT_TAG origin/main)
 
-FetchContent_MakeAvailable (melatonin_perfetto)
+# FetchContent_MakeAvailable (melatonin_perfetto)
 
 
 
@@ -144,7 +144,7 @@ add_compile_definitions(
 )
 add_compile_definitions(MODEL_TO_USE=2) # GuitarLSTM
 
-# target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
 
 target_compile_definitions(${TARGET_NAME}
@@ -225,6 +225,12 @@ MAKE_CMAJ_LIBRARY (
 # list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/anira_lib")
 # find_package(anira REQUIRED)
 
+
+
+# Add the path to the anira library as cmake prefix path and find the package
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-Windows-x86_64)
+find_package(anira REQUIRED)
+
 target_link_libraries(${TARGET_NAME}
     PRIVATE
         # BinaryData
@@ -232,28 +238,20 @@ target_link_libraries(${TARGET_NAME}
         anira::anira
         cmajor_lib
         juce::juce_audio_utils
-        Melatonin::Perfetto
+        # Melatonin::Perfetto
         melatonin_inspector
 
 )
 
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_ONNX "${ANIRA_ONNXRUNTIME_SHARED_LIB_PATH}/*.dll")
-list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_ONNX})
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-Windows-x86_64/lib/*.dll")
+list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS})
 
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_TFLITE "${ANIRA_TENSORFLOWLITE_SHARED_LIB_PATH}/*.dll")
-list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_TFLITE})
-
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS_LIBTORCH "${ANIRA_LIBTORCH_SHARED_LIB_PATH}*.dll")
-list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS_LIBTORCH})
-
-message(dlls=${NECESSARY_DLLS})
-if (MSVC)
-	foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
-		string(CONCAT CONCATENATED_TARGET ${TARGET_NAME}_${FORMAT})
-		add_custom_command(TARGET ${CONCATENATED_TARGET}
-				POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different
-				${NECESSARY_DLLS}
-				$<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
-	endforeach()
-endif (MSVC)
+foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
+    string(CONCAT CONCATENATED_TARGET ${TARGET_NAME}_${FORMAT})
+    add_custom_command(TARGET ${CONCATENATED_TARGET}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${NECESSARY_DLLS}
+            $<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
+endforeach()
+# endif (MSVC)

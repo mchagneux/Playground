@@ -8,9 +8,9 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      parameters (*this, nullptr, juce::Identifier (getName()), {}) //NeuralParameters::createParameterLayout())
 
 {
-#if PERFETTO
-    MelatoninPerfetto::get().beginSession();
-#endif
+// #if PERFETTO
+//     MelatoninPerfetto::get().beginSession();
+// #endif
 
 
     auto patch = std::make_shared<cmaj::Patch>();
@@ -22,14 +22,14 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 
 
     // cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));   
-    // neuralProcessor = std::make_unique<NeuralProcessor>(getBusesProperties(), parameters);
+    neuralProcessor = std::make_unique<NeuralProcessor>(getBusesProperties(), parameters);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
-#if PERFETTO
-    MelatoninPerfetto::get().endSession();
-#endif
+// #if PERFETTO
+//     MelatoninPerfetto::get().endSession();
+// #endif
 }
 
 //==============================================================================
@@ -110,7 +110,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     // mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
     cmajorJITLoaderPlugin->prepareToPlay (sampleRate, samplesPerBlock);
-    // neuralProcessor->prepareToPlay(sampleRate, samplesPerBlock);
+    neuralProcessor->prepareToPlay(sampleRate, samplesPerBlock);
 
 }
 
@@ -120,7 +120,7 @@ void AudioPluginAudioProcessor::releaseResources()
     // spare memory, etc.
     // mainProcessor->releaseResources();
     cmajorJITLoaderPlugin->releaseResources();
-    // neuralProcessor->releaseResources();
+    neuralProcessor->releaseResources();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const

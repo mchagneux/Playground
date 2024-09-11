@@ -9,8 +9,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     // cmajorJITComponent = std::make_unique<juce::Component>(static_cast<juce::Component *>(processorRef.getCmajorProcessor().createEditor()));
-    // neuralComponent = std::make_unique<NeuralComponent>(processorRef.getValueTreeState()); 
-    // addAndMakeVisible(*neuralComponent);
+    neuralComponent = std::make_unique<NeuralComponent>(processorRef.getValueTreeState()); 
+    addAndMakeVisible(*neuralComponent);
     addAndMakeVisible(*cmajorEditor);
     // setResizable(true, true);
     setSize (1280, 720);
@@ -36,7 +36,7 @@ void AudioPluginAudioProcessorEditor::resized()
 
     auto area = getLocalBounds();
     cmajorEditor->setBounds(area.removeFromLeft((int) (getWidth() / 3)));
-    // neuralComponent->setBounds(area.removeFromLeft((int) (getWidth() / 3)));
+    neuralComponent->setBounds(area.removeFromLeft((int) (getWidth() / 3)));
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
 }

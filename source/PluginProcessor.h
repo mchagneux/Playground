@@ -3,11 +3,11 @@
 // #include <juce_audio_processors/juce_audio_processors.h>
 #include <JuceHeader.h>
 // #include "CmajorProcessor.h"
-// #include "neural/NeuralProcessor.h"
+#include "neural/NeuralProcessor.h"
 #include "cmaj_JUCEPlugin.h"
 // #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_JUCEPlugin.h"
 
-#include <melatonin_perfetto/melatonin_perfetto.h>
+// #include <melatonin_perfetto/melatonin_perfetto.h>
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -122,15 +122,15 @@ private:
     // Node::Ptr audioOutputNode;
     // Node::Ptr midiInputNode;
     // Node::Ptr cmajorGeneratorNode;
-#if PERFETTO
-    std::unique_ptr<perfetto::TracingSession> tracingSession;
-#endif
+// #if PERFETTO
+    // std::unique_ptr<perfetto::TracingSession> tracingSession;
+// #endif
 
     juce::AudioProcessorValueTreeState parameters;
     // std::unique_ptr<CmajorProcessor> cmajorProcessor;
     std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin; 
 
-    // std::unique_ptr<NeuralProcessor> neuralProcessor; 
+    std::unique_ptr<NeuralProcessor> neuralProcessor; 
     // std::unique_ptr<NeuralProcessor> neuralProcessor;
     // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================
