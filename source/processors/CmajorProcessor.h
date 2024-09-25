@@ -1231,6 +1231,11 @@ public:
         setNewStateAsync (createEmptyState (manifestLocation));
     }
 
+
+    juce::Component * createUI(){
+        return new Editor(*this); 
+    }
+    
     bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
     {
         if (! newState.isValid())

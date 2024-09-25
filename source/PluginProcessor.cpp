@@ -1,29 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "neural/NeuralParameters.h"
-//==============================================================================
-AudioPluginAudioProcessor::AudioPluginAudioProcessor()
-     : AudioProcessor (getBusesProperties()), 
-    //  parameters (*this, nullptr, juce::Identifier (getName()), NeuralParameters::createParameterLayout())
-     parameters (*this, nullptr, juce::Identifier (getName()), PluginParameters::createParameterLayout())
-
-{
-// #if PERFETTO
-//     MelatoninPerfetto::get().beginSession();
-// #endif
-
-
-    auto patch = std::make_shared<cmaj::Patch>();
-    patch->setAutoRebuildOnFileChange (true);
-    patch->createEngine = +[] { return cmaj::Engine::create(); };
-    cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
-
-
-
-
-    // cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));   
-    neuralProcessor = std::make_unique<NeuralProcessor>(getBusesProperties(), parameters);
-}
+//==============================================================================     
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
@@ -110,7 +87,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     // mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
     cmajorJITLoaderPlugin->prepareToPlay (sampleRate, samplesPerBlock);
-    neuralProcessor->prepareToPlay(sampleRate, samplesPerBlock);
+    neuralProcessor.prepareToPlay(sampleRate, samplesPerBlock);
+    postProcessor.prepareToPlay(sampleRate, samplesPerBlock); 
 
 }
 
@@ -120,7 +98,8 @@ void AudioPluginAudioProcessor::releaseResources()
     // spare memory, etc.
     // mainProcessor->releaseResources();
     cmajorJITLoaderPlugin->releaseResources();
-    neuralProcessor->releaseResources();
+    neuralProcessor.releaseResources();
+    postProcessor.releaseResources();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -154,7 +133,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // mainProcessor->processBlock (buffer, midiMessages);
     cmajorJITLoaderPlugin->processBlock(buffer, midiMessages);
-    neuralProcessor->processBlock(buffer, midiMessages);
+    neuralProcessor.processBlock(buffer, midiMessages);
+    postProcessor.processBlock(buffer, midiMessages); 
 }
 
 //==============================================================================

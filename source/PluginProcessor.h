@@ -1,11 +1,11 @@
 #pragma once
 
-// #include <juce_audio_processors/juce_audio_processors.h>
 #include <JuceHeader.h>
-// #include "CmajorProcessor.h"
-#include "neural/NeuralProcessor.h"
-#include "cmajor/CmajorProcessor.h"
-// #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_JUCEPlugin.h"
+#include "./utils/Parameters.h"
+
+#include "./processors/NeuralProcessor.h"
+#include "./processors/CmajorProcessor.h"
+#include "./processors/PostProcessor.h"
 
 // #include <melatonin_perfetto/melatonin_perfetto.h>
 
@@ -13,10 +13,11 @@
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
 {
 public:
+
     using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
     using Node = juce::AudioProcessorGraph::Node;
     //==============================================================================
-    AudioPluginAudioProcessor();
+    AudioPluginAudioProcessor(): AudioPluginAudioProcessor(juce::AudioProcessorValueTreeState::ParameterLayout {}) {}
     ~AudioPluginAudioProcessor() override;
 
     //==============================================================================
@@ -56,14 +57,6 @@ public:
         // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
     }
 
-    // NeuralProcessor& getNeuralProcessor(){
-    //     return *neuralProcessor;
-    //     // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
-    // }
-
-
-    juce::AudioProcessorValueTreeState& getValueTreeState() { return parameters; }
-
 
     BusesProperties getBusesProperties() 
     {
@@ -77,60 +70,28 @@ public:
                     ;
     }
 
-    // void initialiseGraph()
-    // {
-    //     mainProcessor->clear();
-
-    //     audioInputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioInputNode));
-    //     audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
-    //     midiInputNode   = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::midiInputNode));
-
-
-    //     auto patch = std::make_shared<cmaj::Patch>();
-    //     patch->setAutoRebuildOnFileChange (true);
-    //     patch->createEngine = +[] { return cmaj::Engine::create(); };
-
-    //     // cmajorProcessor = std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch));
-    //     cmajorGeneratorNode = mainProcessor->addNode(std::make_unique<CmajorProcessor>(getBusesProperties(), std::move(patch)));
-
-    //     connectAudioNodes();
-    //     connectMidiNodes();
-
-
-    // }
-
-    // void connectAudioNodes()
-    // {
-    //     for (int channel = 0; channel < 2; ++channel){
-    //         mainProcessor->addConnection ({ { audioInputNode->nodeID,  channel },
-    //                                         { cmajorGeneratorNode->nodeID, channel } });
-
-    //         mainProcessor->addConnection ({ { cmajorGeneratorNode->nodeID,  channel },
-    //                                         { audioOutputNode->nodeID, channel } });
-    //     }
-    // }
-
-    // void connectMidiNodes()
-    // {
-    //     mainProcessor->addConnection ({ { midiInputNode->nodeID,  juce::AudioProcessorGraph::midiChannelIndex },
-    //                                     { cmajorGeneratorNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex } });
-    // }
-
+    State state;
 
 private:
-    // Node::Ptr audioInputNode;
-    // Node::Ptr audioOutputNode;
-    // Node::Ptr midiInputNode;
-    // Node::Ptr cmajorGeneratorNode;
-// #if PERFETTO
-    // std::unique_ptr<perfetto::TracingSession> tracingSession;
-// #endif
 
-    juce::AudioProcessorValueTreeState parameters;
+    explicit AudioPluginAudioProcessor(juce::AudioProcessorValueTreeState::ParameterLayout layout)
+        : AudioProcessor (getBusesProperties()), 
+        state(layout, *this),
+        postProcessor(state, getBusesProperties()),
+        neuralProcessor(state, getBusesProperties())
+    {
+        auto patch = std::make_shared<cmaj::Patch>();
+        patch->setAutoRebuildOnFileChange (true);
+        patch->createEngine = +[] { return cmaj::Engine::create(); };
+        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
+        cmajorJITLoaderPlugin->loadPatch("E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
+    }
+
+    PostProcessor postProcessor; 
+    NeuralProcessor neuralProcessor; 
+
     // std::unique_ptr<CmajorProcessor> cmajorProcessor;
     std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin; 
-
-    std::unique_ptr<NeuralProcessor> neuralProcessor; 
     // std::unique_ptr<NeuralProcessor> neuralProcessor;
     // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================

@@ -133,11 +133,11 @@ juce_generate_juce_header(${TARGET_NAME})
 set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
 set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
 
-target_compile_definitions(${TARGET_NAME}
-    PUBLIC
-    GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-    GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
-)
+# target_compile_definitions(${TARGET_NAME}
+#     PUBLIC
+#     GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
+#     GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
+# )
 
 # # Set the model path as compile definition for the build interface
 # set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
@@ -165,13 +165,21 @@ target_compile_definitions(${TARGET_NAME}
         JUCE_WEB_BROWSER=0
         DONT_SET_USING_JUCE_NAMESPACE=1
         GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}")
+        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
+        STEERABLENAFX_MODELS_PATH_TENSORFLOW="${STEERABLENAFX_MODELS_PATH_TENSORFLOW}"
+        STEERABLENAFX_MODELS_PATH_PYTORCH="${STEERABLENAFX_MODELS_PATH_PYTORCH}"
+        STATEFULLSTM_MODELS_PATH_TENSORFLOW="${STATEFULLSTM_MODELS_PATH_TENSORFLOW}"
+        STATEFULLSTM_MODELS_PATH_PYTORCH="${STATEFULLSTM_MODELS_PATH_PYTORCH}"
+        MODEL_TO_USE=2
+        # add_compile_definitions(MODEL_TO_USE=1) # steerable-nafx
+# GuitarLSTM
+# add_compile_definitions(MODEL_TO_USE=3) # stateful-LSTM
             # Backend-specific definitions
         # $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
         # $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
         # $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>)
-
-
+    )
+    
 
 add_compile_definitions (
     $<$<CONFIG:Debug>:DEBUG=1>
@@ -240,7 +248,7 @@ MAKE_CMAJ_LIBRARY (
 
 
 # Add the path to the anira library as cmake prefix path and find the package
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.0-lib)
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib)
 find_package(anira REQUIRED)
 
 target_link_libraries(${TARGET_NAME}
@@ -251,11 +259,11 @@ target_link_libraries(${TARGET_NAME}
         cmajor_lib
         juce::juce_audio_utils
         # Melatonin::Perfetto
-        # melatonin_inspector
+        melatonin_inspector
 
 )
 
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.0-lib/lib/*.dll")
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib/lib/*.dll")
 list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS})
 
 foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
@@ -267,3 +275,16 @@ foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
             $<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
 endforeach()
 # endif (MSVC)
+
+
+# foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
+#     string(CONCAT PLUGIN_TARGET ${TARGET_NAME}_${FORMAT})
+#     message(STATUS "${PLUGIN_TARGET}")
+#     message(STATUS "${ANIRA_SHARED_LIBS_WIN}")
+
+#     add_custom_command(TARGET ${PLUGIN_TARGET}
+#             POST_BUILD
+#             COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#             ${ANIRA_SHARED_LIBS_WIN}
+#             $<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
+# endforeach()
