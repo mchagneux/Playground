@@ -10,15 +10,15 @@
 // #include <melatonin_perfetto/melatonin_perfetto.h>
 
 //==============================================================================
-class AudioPluginAudioProcessor final : public juce::AudioProcessor
+class MainProcessor final : public juce::AudioProcessor
 {
 public:
 
     using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
     using Node = juce::AudioProcessorGraph::Node;
     //==============================================================================
-    AudioPluginAudioProcessor(): AudioPluginAudioProcessor(juce::AudioProcessorValueTreeState::ParameterLayout {}) {}
-    ~AudioPluginAudioProcessor() override;
+    MainProcessor(): MainProcessor(juce::AudioProcessorValueTreeState::ParameterLayout {}) {}
+    ~MainProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -70,15 +70,27 @@ public:
                     ;
     }
 
-    State state;
+    struct State
+    {
+        explicit State(juce::AudioProcessorValueTreeState::ParameterLayout& layout, juce::AudioProcessor& p)
+        : parameterRefs { layout }, 
+        apvts (p, nullptr, "Plugin", std::move(layout)){ }
+
+        Parameters parameterRefs;
+        juce::AudioProcessorValueTreeState apvts; 
+    }; 
+
+
+    Parameters parameters; 
 
 private:
 
-    explicit AudioPluginAudioProcessor(juce::AudioProcessorValueTreeState::ParameterLayout layout)
+    explicit MainProcessor(juce::AudioProcessorValueTreeState::ParameterLayout layout)
         : AudioProcessor (getBusesProperties()), 
-        state(layout, *this),
-        postProcessor(state, getBusesProperties()),
-        neuralProcessor(state, getBusesProperties())
+        parameters(layout),
+        apvts(*this, nullptr, "Plugin", std::move(layout)),
+        postProcessor(parameters.postProcessor, getBusesProperties()),
+        neuralProcessor(parameters.neural, getBusesProperties())
     {
         auto patch = std::make_shared<cmaj::Patch>();
         patch->setAutoRebuildOnFileChange (true);
@@ -86,6 +98,9 @@ private:
         cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
         cmajorJITLoaderPlugin->loadPatch("E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
     }
+
+
+    juce::AudioProcessorValueTreeState apvts; 
 
     PostProcessor postProcessor; 
     NeuralProcessor neuralProcessor; 
@@ -95,5 +110,5 @@ private:
     // std::unique_ptr<NeuralProcessor> neuralProcessor;
     // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainProcessor)
 };

@@ -16,15 +16,14 @@
 #include "../../3rd_party/anira/extras/desktop/models/stateful-rnn/StatefulRNNPrePostProcessor.h"
 
 //==============================================================================
-class NeuralProcessor  : public juce::AudioProcessor, juce::AudioProcessorValueTreeState::Listener
+class NeuralProcessor  : public juce::AudioProcessor, private juce::AudioProcessorParameter::Listener
 
 {
 public:
 
-    NeuralProcessor(State& s, BusesProperties b) 
+    NeuralProcessor(const NeuralParameters& p , BusesProperties b) 
         : juce::AudioProcessor (b), 
-          parameterRefs(s.parameterRefs.neural), 
-          apvts(s.apvts),
+          parameters(p),
     #if MODEL_TO_USE == 1 || MODEL_TO_USE == 2
         //The noneProcessor is not needed for inference, but for the round trip test to output audio when selecting the NONE backend. It must be customized when default prePostProcessor is replaced by a custom one.
         noneProcessor(inferenceConfig),
@@ -34,18 +33,13 @@ public:
     #endif
         dryWetMixer(32768) // 32768 samples of max latency compensation for the dry-wet mixer
     {
-
-        // for (auto & parameterID : Parameters::getPluginParameterList()) 
-        // {
-        apvts.addParameterListener(ID::neuralDryWet, this);
-        apvts.addParameterListener(ID::neuralBackend, this);
-        // }
+        parameters.neuralDryWet.addListener(this); 
+        parameters.neuralBackend.addListener(this); 
     }
     ~NeuralProcessor() override 
     {
-        // {
-        apvts.removeParameterListener(ID::neuralDryWet, this);
-        apvts.removeParameterListener(ID::neuralBackend, this);
+        parameters.neuralDryWet.removeListener(this); 
+        parameters.neuralBackend.removeListener(this);     
     }
 
     //==============================================================================
@@ -73,8 +67,8 @@ public:
 
 
 
-        parameterChanged(ID::neuralDryWet, parameterRefs.neuralDryWet.get());
-        parameterChanged(ID::neuralBackend, parameterRefs.neuralBackend.getIndex());
+        parameterValueChanged(parameters.neuralDryWet.getParameterIndex(), parameters.neuralDryWet.get());
+        parameterValueChanged(parameters.neuralBackend.getParameterIndex(), parameters.neuralBackend.getIndex());
 
     }
 
@@ -151,17 +145,19 @@ public:
 
 private:
 
-    void parameterChanged (const juce::String& parameterID, float newValue) override
+    void parameterGestureChanged (int parameterIndex, bool gestureIsStarting) override {}
+
+    void parameterValueChanged (int parameterIndex, float newValue) override
     {
-        if (parameterID == parameterRefs.neuralBackend.getParameterID()) 
+        if (parameterIndex == parameters.neuralBackend.getParameterIndex()) 
         {
             dryWetMixer.setWetMixProportion(newValue);
         } 
-        else if (parameterID == parameterRefs.neuralDryWet.getParameterID()) 
+        else if (parameterIndex == parameters.neuralDryWet.getParameterIndex()) 
         
         {
             const auto paramInt = static_cast<int>(newValue);
-            auto paramString = parameterRefs.backendTypes.getReference(paramInt);
+            auto paramString = parameters.backendTypes.getReference(paramInt);
             if (paramString == "TFLITE") inferenceHandler.setInferenceBackend(anira::TFLITE);
             if (paramString == "ONNXRUNTIME") inferenceHandler.setInferenceBackend(anira::ONNX);
             if (paramString == "LIBTORCH") inferenceHandler.setInferenceBackend(anira::LIBTORCH);
@@ -207,6 +203,7 @@ private:
 
 
 private:
+    const NeuralParameters& parameters; 
     juce::AudioBuffer<float> monoBuffer;
     anira::InferenceHandler inferenceHandler;
     juce::dsp::DryWetMixer<float> dryWetMixer;
@@ -223,8 +220,6 @@ private:
     anira::InferenceConfig inferenceConfig = statefulRNNConfig;
     StatefulRNNPrePostProcessor prePostProcessor;
 #endif
-    NeuralParameters& parameterRefs; 
-    juce::AudioProcessorValueTreeState& apvts; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NeuralProcessor)
 };

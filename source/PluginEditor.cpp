@@ -1,13 +1,13 @@
-#include "Panels.h"
+#include "./utils/Panels.h"
 #include "PluginEditor.h"
 
 //==============================================================================
-AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
+MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
     : juce::AudioProcessorEditor (&p), 
       processorRef (p), 
       cmajorEditor(p.getCmajorProcessor().createUI()),
-      postProcessorControls(*this, processorRef.state.parameterRefs.postProcessor),
-      neuralControls(*this, processorRef.state.parameterRefs.neural)
+      postProcessorControls(*this, p.parameters.postProcessor),
+      neuralControls(*this, p.parameters.neural)
 {
     juce::ignoreUnused (processorRef);
     // Make sure that before the constructor has finished, you've set the
@@ -24,13 +24,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     setSize (1920, 1080);
 }
 
-AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
+MainProcessorEditor::~MainProcessorEditor()
 {
 
 }
 
 //==============================================================================
-void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
+void MainProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (juce::Colours::black); 
@@ -39,7 +39,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
     // g.setFont (15.0f);
 }
 
-void AudioPluginAudioProcessorEditor::resized()
+void MainProcessorEditor::resized()
 {
 
     auto area = getLocalBounds();

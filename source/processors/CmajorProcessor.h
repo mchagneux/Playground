@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 #pragma once
-#include "JuceHeader.h"
+#include <JuceHeader.h>
 
 #if JUCE_LINUX
  #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..

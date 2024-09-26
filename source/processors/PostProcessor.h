@@ -3,17 +3,16 @@
 #include "./Distortion.h"
 #include "./Compressor.h"
 
-#include "./utils/Parameters.h"
+#include "../utils/Parameters.h"
 
 struct PostProcessor : public juce::AudioProcessor
 {
 
 public: 
 
-    PostProcessor (State& s, BusesProperties b)
+    PostProcessor (const PostProcessorParameters& p, BusesProperties b)
         : juce::AudioProcessor (b), 
-          parameterRefs(s.parameterRefs.postProcessor), 
-          apvts(s.apvts){ }
+          parameters(p){ }
     
     ~PostProcessor() override {}
 
@@ -107,29 +106,29 @@ private:
         {
             DistortionProcessor& distortion = juce::dsp::get<distortionIndex> (chain);
 
-            if (distortion.currentIndexOversampling != parameterRefs.distortion.oversampler.getIndex())
+            if (distortion.currentIndexOversampling != parameters.distortion.oversampler.getIndex())
             {
-                distortion.currentIndexOversampling = parameterRefs.distortion.oversampler.getIndex();
+                distortion.currentIndexOversampling = parameters.distortion.oversampler.getIndex();
                 prepareToPlay (getSampleRate(), getBlockSize());
                 return;
             }
 
-            distortion.currentIndexWaveshaper = parameterRefs.distortion.type.getIndex();
-            distortion.lowpass .setCutoffFrequency (parameterRefs.distortion.lowpass.get());
-            distortion.highpass.setCutoffFrequency (parameterRefs.distortion.highpass.get());
-            distortion.distGain.setGainDecibels (parameterRefs.distortion.inGain.get());
-            distortion.compGain.setGainDecibels (parameterRefs.distortion.compGain.get());
-            distortion.mixer.setWetMixProportion (parameterRefs.distortion.mix.get() / 100.0f);
-            juce::dsp::setBypassed<distortionIndex> (chain, ! parameterRefs.distortion.enabled);
+            distortion.currentIndexWaveshaper = parameters.distortion.type.getIndex();
+            distortion.lowpass .setCutoffFrequency (parameters.distortion.lowpass.get());
+            distortion.highpass.setCutoffFrequency (parameters.distortion.highpass.get());
+            distortion.distGain.setGainDecibels (parameters.distortion.inGain.get());
+            distortion.compGain.setGainDecibels (parameters.distortion.compGain.get());
+            distortion.mixer.setWetMixProportion (parameters.distortion.mix.get() / 100.0f);
+            juce::dsp::setBypassed<distortionIndex> (chain, ! parameters.distortion.enabled);
         }
 
         {
             juce::dsp::Compressor<float>& compressor = juce::dsp::get<compressorIndex> (chain);
-            compressor.setThreshold (parameterRefs.compressor.threshold.get());
-            compressor.setRatio     (parameterRefs.compressor.ratio.get());
-            compressor.setAttack    (parameterRefs.compressor.attack.get());
-            compressor.setRelease   (parameterRefs.compressor.release.get());
-            juce::dsp::setBypassed<compressorIndex> (chain, ! parameterRefs.compressor.enabled);
+            compressor.setThreshold (parameters.compressor.threshold.get());
+            compressor.setRatio     (parameters.compressor.ratio.get());
+            compressor.setAttack    (parameters.compressor.attack.get());
+            compressor.setRelease   (parameters.compressor.release.get());
+            juce::dsp::setBypassed<compressorIndex> (chain, ! parameters.compressor.enabled);
         }
 
 
@@ -147,8 +146,7 @@ private:
     };
     std::atomic<bool> requiresUpdate { true };
 
-    PostProcessorParameters& parameterRefs; 
-    juce::AudioProcessorValueTreeState& apvts; 
+    const PostProcessorParameters& parameters; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PostProcessor)
 };

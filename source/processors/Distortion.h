@@ -13,6 +13,7 @@ using Parameter = juce::AudioProcessorValueTreeState::Parameter;
 
 struct DistortionProcessor
 {
+
     DistortionProcessor()
     {
         forEach ([] (juce::dsp::Gain<float>& gain) { gain.setRampDurationSeconds (0.05); },
@@ -102,6 +103,7 @@ struct DistortionProcessor
     juce::dsp::WaveShaper<float> clipping { clip };
     int currentIndexOversampling = 0;
     int currentIndexWaveshaper   = 0;
+
 };
 
 struct DistortionControls final : public juce::Component

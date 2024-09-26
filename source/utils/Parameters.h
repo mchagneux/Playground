@@ -213,14 +213,12 @@ struct Parameters
 
 }; 
 
-struct State
-{
-    explicit State(juce::AudioProcessorValueTreeState::ParameterLayout& layout, juce::AudioProcessor& p)
-    : parameterRefs { layout }, 
-      apvts (p, nullptr, "Plugin", std::move(layout)),
-      proc(p){ }
+// struct State
+// {
+//     explicit State(juce::AudioProcessorValueTreeState::ParameterLayout& layout, juce::AudioProcessor& p)
+//     : parameterRefs { layout }, 
+//       apvts (p, nullptr, "Plugin", std::move(layout)){ }
 
-    Parameters parameterRefs;
-    juce::AudioProcessorValueTreeState apvts; 
-    juce::AudioProcessor& proc; 
-}; 
+//     Parameters parameterRefs;
+//     juce::AudioProcessorValueTreeState apvts; 
+// }; 
