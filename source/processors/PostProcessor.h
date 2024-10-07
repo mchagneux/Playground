@@ -1,67 +1,82 @@
 #pragma once 
 #include <JuceHeader.h>
-#include "./Distortion.h"
-#include "./Compressor.h"
-
+#include "./MultiTypeFilter.h"
 #include "../utils/Parameters.h"
+#include "../utils/Misc.h"
+#include "./Compressor.h"
 
 struct PostProcessor : public juce::AudioProcessor
 {
 
 public: 
 
-    PostProcessor (const PostProcessorParameters& p, BusesProperties b)
-        : juce::AudioProcessor (b), 
-          parameters(p){ }
+    PostProcessor (const PostProcessorParameters& p)
+        : juce::AudioProcessor (getBusesProperties()), 
+          parameters(p), 
+          filter(parameters.filter),
+          compressor(parameters.compressor) { }
     
     ~PostProcessor() override {}
 
 
-    //==============================================================================
-    void prepareToPlay (double sampleRate, int samplesPerBlock) final
+//==============================================================================
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override
     {
+        // Use this method as the place to do any pre-playback
+        // initialisation that you need..
+        juce::ignoreUnused (sampleRate, samplesPerBlock);
         const auto channels = juce::jmax (getTotalNumInputChannels(), getTotalNumOutputChannels());
 
         if (channels == 0)
             return;
 
-        chain.prepare ({ sampleRate, (juce::uint32) samplesPerBlock, (juce::uint32) channels });
+        auto spec  = juce::dsp::ProcessSpec{ sampleRate, (juce::uint32) samplesPerBlock, (juce::uint32) channels };
+        filter.prepare(spec);
+        compressor.prepare(spec);
+        // filter.reset();
 
-        reset();
     }
-    
+        
     void reset() final
     {
-        chain.reset();
-        update();
+        filter.reset();
+        compressor.reset();
+        // chain.reset();
+        // update();
     }
+
+    static BusesProperties getBusesProperties()
+    {
+        return BusesProperties()
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true);
+    }
+
 
     void releaseResources() final {}
 
     void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) final
     {
+
         if (juce::jmax (getTotalNumInputChannels(), getTotalNumOutputChannels()) == 0)
             return;
 
         juce::ScopedNoDenormals noDenormals;
-
-        if (requiresUpdate.load())
-            update();
- 
         const auto totalNumInputChannels  = getTotalNumInputChannels();
         const auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-        setLatencySamples (juce::dsp::isBypassed<distortionIndex> (chain) ? 0 : juce::roundToInt (juce::dsp::get<distortionIndex> (chain).getLatency()));
 
         const auto numChannels = juce::jmax (totalNumInputChannels, totalNumOutputChannels);
 
         auto inoutBlock = juce::dsp::AudioBlock<float> (buffer).getSubsetChannelBlock (0, (size_t) numChannels);
-        chain.process (juce::dsp::ProcessContextReplacing<float> (inoutBlock));
+        auto context = juce::dsp::ProcessContextReplacing<SampleType> (inoutBlock);
+
+        filter.process (context);
+        filter.postAnalyzer.addAudioData(buffer, 0, 2);
+        compressor.process(context);
     }
 
     void processBlock (juce::AudioBuffer<double>&, juce::MidiBuffer&) final {}
 
-    //==============================================================================
     juce::AudioProcessorEditor* createEditor() override { return nullptr; }
     bool hasEditor() const override { return false; }
 
@@ -99,54 +114,20 @@ public:
         // state.replaceState (juce::ValueTree::fromXml (*getXmlFromBinary (data, sizeInBytes)));
     }
 
+    const PostProcessorParameters& parameters; 
+
+    auto& getfilter()
+    {
+        return filter; 
+    }
+    auto& getCompressor()
+    {
+        return compressor; 
+    }
 private:
 
-    void update()
-    {
-        {
-            DistortionProcessor& distortion = juce::dsp::get<distortionIndex> (chain);
-
-            if (distortion.currentIndexOversampling != parameters.distortion.oversampler.getIndex())
-            {
-                distortion.currentIndexOversampling = parameters.distortion.oversampler.getIndex();
-                prepareToPlay (getSampleRate(), getBlockSize());
-                return;
-            }
-
-            distortion.currentIndexWaveshaper = parameters.distortion.type.getIndex();
-            distortion.lowpass .setCutoffFrequency (parameters.distortion.lowpass.get());
-            distortion.highpass.setCutoffFrequency (parameters.distortion.highpass.get());
-            distortion.distGain.setGainDecibels (parameters.distortion.inGain.get());
-            distortion.compGain.setGainDecibels (parameters.distortion.compGain.get());
-            distortion.mixer.setWetMixProportion (parameters.distortion.mix.get() / 100.0f);
-            juce::dsp::setBypassed<distortionIndex> (chain, ! parameters.distortion.enabled);
-        }
-
-        {
-            juce::dsp::Compressor<float>& compressor = juce::dsp::get<compressorIndex> (chain);
-            compressor.setThreshold (parameters.compressor.threshold.get());
-            compressor.setRatio     (parameters.compressor.ratio.get());
-            compressor.setAttack    (parameters.compressor.attack.get());
-            compressor.setRelease   (parameters.compressor.release.get());
-            juce::dsp::setBypassed<compressorIndex> (chain, ! parameters.compressor.enabled);
-        }
-
-
-        requiresUpdate.store (false);
-    }
-
-
-    using Chain = juce::dsp::ProcessorChain<DistortionProcessor, CompressorProcessor>;
-    Chain chain;
-
-    enum ProcessorIndices
-    {
-        distortionIndex,
-        compressorIndex
-    };
-    std::atomic<bool> requiresUpdate { true };
-
-    const PostProcessorParameters& parameters; 
+    StereoIIRFilter filter; 
+    Compressor compressor; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PostProcessor)
 };
@@ -155,22 +136,23 @@ private:
 struct PostProcessorControls final : public juce::Component
 {
 
-    explicit PostProcessorControls (juce::AudioProcessorEditor& editor,
-                                    const PostProcessorParameters& params)
-        : distortion(editor, params.distortion),
-          compressor(editor, params.compressor)
+    explicit PostProcessorControls (juce::AudioProcessorEditor& editor, PostProcessor& pp)
+        : filter(editor, pp.getfilter()), 
+          compressor(editor, pp.parameters.compressor) 
           
     {
-        addAllAndMakeVisible (*this, distortion, compressor);
+        addAllAndMakeVisible (*this, filter, compressor);
     }
 
     void resized() override
     {
         auto r = getLocalBounds(); 
-        distortion.setBounds(r.removeFromTop((int) (getHeight() / 2))); 
-        compressor.setBounds(r); 
+        // distortion.setBounds(r.removeFromTop((int) (getHeight() / 2))); 
+        filter.setBounds(r.removeFromTop(getHeight() / 2)); 
+        compressor.setBounds(r.removeFromTop((int) (r.getHeight() / 2)));
     }
 
-    DistortionControls distortion; 
+    FilterControls filter; 
     CompressorControls compressor; 
+    
 };

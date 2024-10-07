@@ -71,11 +71,11 @@ graph Voice
     input contour.frequencyIn; 
     input frequencyMultiplier.ratioIn;
     input softClip.On;
-    input filter.filterFreqIn;
-    input filter.filterQIn; 
-    input filter.filterOn;
+    // input filter.filterFreqIn;
+    // input filter.filterQIn; 
+    // input filter.filterOn;
     input softClip.driveIn;
-    input event float32 contourFreq [[name: "Contour Freq", min:1000.0f, max:20000.0f, init:5000.0f, unit:"Hz"]];
+    // input event float32 contourFreq [[name: "Contour Freq", min:1000.0f, max:20000.0f, init:5000.0f, unit:"Hz"]];
 
     // input carrier.shapeIn;
     input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
@@ -89,7 +89,7 @@ graph Voice
         modulator = MyOscillators::Sine(float32);
         contour = MyOscillators::Sine(float32);
         sub = MyOscillators::Sine(float32);
-        filter = BypassableFilter;
+        // filter = BypassableFilter;
         softClip = SoftClip;
         subMix = SubMix(float32);
     }
@@ -104,8 +104,8 @@ graph Voice
         frequencyMultiplier -> modulator.frequencyIn;
         contour.out -> carrier.contourIn;
         modulator.out -> carrier.modulatorIn;
-        carrier.out -> filter.in; 
-        filter.out -> softClip.in;
+        carrier.out -> softClip.in; 
+        // filter.out -> softClip.in;
         sub.out -> subMix.subIn;
         softClip.out -> subMix.mixIn;
         subMix.out -> out; 

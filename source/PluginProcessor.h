@@ -57,6 +57,11 @@ public:
         // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
     }
 
+    auto& getPostProcessor()
+    {
+        return postProcessor; 
+    }
+
 
     BusesProperties getBusesProperties() 
     {
@@ -70,16 +75,6 @@ public:
                     ;
     }
 
-    struct State
-    {
-        explicit State(juce::AudioProcessorValueTreeState::ParameterLayout& layout, juce::AudioProcessor& p)
-        : parameterRefs { layout }, 
-        apvts (p, nullptr, "Plugin", std::move(layout)){ }
-
-        Parameters parameterRefs;
-        juce::AudioProcessorValueTreeState apvts; 
-    }; 
-
 
     Parameters parameters; 
 
@@ -89,8 +84,8 @@ private:
         : AudioProcessor (getBusesProperties()), 
         parameters(layout),
         apvts(*this, nullptr, "Plugin", std::move(layout)),
-        postProcessor(parameters.postProcessor, getBusesProperties()),
-        neuralProcessor(parameters.neural, getBusesProperties())
+        postProcessor(parameters.postProcessor),
+        neuralProcessor(parameters.neural)
     {
         auto patch = std::make_shared<cmaj::Patch>();
         patch->setAutoRebuildOnFileChange (true);
@@ -98,7 +93,6 @@ private:
         cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
         cmajorJITLoaderPlugin->loadPatch("E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
     }
-
 
     juce::AudioProcessorValueTreeState apvts; 
 

@@ -21,8 +21,8 @@ class NeuralProcessor  : public juce::AudioProcessor, private juce::AudioProcess
 {
 public:
 
-    NeuralProcessor(const NeuralParameters& p , BusesProperties b) 
-        : juce::AudioProcessor (b), 
+    NeuralProcessor(const NeuralParameters& p) 
+        : juce::AudioProcessor (getBusesProperties()), 
           parameters(p),
     #if MODEL_TO_USE == 1 || MODEL_TO_USE == 2
         //The noneProcessor is not needed for inference, but for the round trip test to output audio when selecting the NONE backend. It must be customized when default prePostProcessor is replaced by a custom one.
@@ -40,6 +40,13 @@ public:
     {
         parameters.neuralDryWet.removeListener(this); 
         parameters.neuralBackend.removeListener(this);     
+    }
+
+    static BusesProperties getBusesProperties() 
+    {
+        return BusesProperties()
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true);
     }
 
     //==============================================================================
@@ -64,8 +71,6 @@ public:
         setLatencySamples(newLatency);
 
         dryWetMixer.setWetLatency(newLatency);
-
-
 
         parameterValueChanged(parameters.neuralDryWet.getParameterIndex(), parameters.neuralDryWet.get());
         parameterValueChanged(parameters.neuralBackend.getParameterIndex(), parameters.neuralBackend.getIndex());
@@ -205,8 +210,6 @@ private:
 private:
     const NeuralParameters& parameters; 
     juce::AudioBuffer<float> monoBuffer;
-    anira::InferenceHandler inferenceHandler;
-    juce::dsp::DryWetMixer<float> dryWetMixer;
 
 #if MODEL_TO_USE == 1
     anira::InferenceConfig inferenceConfig = cnnConfig;
@@ -220,6 +223,8 @@ private:
     anira::InferenceConfig inferenceConfig = statefulRNNConfig;
     StatefulRNNPrePostProcessor prePostProcessor;
 #endif
+    anira::InferenceHandler inferenceHandler;
+    juce::dsp::DryWetMixer<float> dryWetMixer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NeuralProcessor)
 };

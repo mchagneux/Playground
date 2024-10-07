@@ -1,6 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
 
+using SampleType = float; 
+
 
 template <typename Func, typename... Items>
 constexpr void forEach (Func&& func, Items&&... items)

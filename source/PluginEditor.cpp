@@ -6,7 +6,7 @@ MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
     : juce::AudioProcessorEditor (&p), 
       processorRef (p), 
       cmajorEditor(p.getCmajorProcessor().createUI()),
-      postProcessorControls(*this, p.parameters.postProcessor),
+      postProcessorControls(*this, p.getPostProcessor()),
       neuralControls(*this, p.parameters.neural)
 {
     juce::ignoreUnused (processorRef);
@@ -21,7 +21,7 @@ MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
     addAndMakeVisible(postProcessorControls); 
     addAndMakeVisible(neuralControls);
     setResizable(true, true);
-    setSize (1920, 1080);
+    setSize (1600, 900);
 }
 
 MainProcessorEditor::~MainProcessorEditor()

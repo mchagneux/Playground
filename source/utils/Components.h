@@ -68,7 +68,7 @@ public:
     void resized() override { slider.setBounds (getLocalBounds().reduced (0, 40)); }
 
 private:
-    juce::Slider slider { juce::Slider::LinearVertical, juce::Slider::TextBoxBelow };
+    juce::Slider slider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxBelow };
     juce::Label label;
     juce::SliderParameterAttachment attachment;
 };

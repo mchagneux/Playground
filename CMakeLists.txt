@@ -89,7 +89,6 @@ add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in
 Include (FetchContent)
 
 
-
 # FetchContent_Declare (melatonin_perfetto
 #   GIT_REPOSITORY https://github.com/sudara/melatonin_perfetto.git
 #   GIT_TAG origin/main)
@@ -108,17 +107,21 @@ FetchContent_MakeAvailable (melatonin_inspector)
 
 add_subdirectory(assets)
 
+# Add the path to the anira library as cmake prefix path and find the package
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib)
+find_package(anira REQUIRED)
+
 
 
 juce_add_plugin(${TARGET_NAME}
     PRODUCT_NAME "Playground"
     BUNDLE_ID ""
-    COMPANY_NAME "RM_Estali"
+    COMPANY_NAME "RM_ESTALI"
     COMPANY_COPYRIGHT ""
     PLUGIN_CODE Playground
     FORMATS ${FORMATS_TO_BUILD}
     IS_SYNTH TRUE
-    COPY_PLUGIN_AFTER_BUILD FALSE        # Should the plugin be installed to a default location after building?
+    COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
     NEEDS_MIDI_INPUT TRUE
     VST3_AUTO_MANIFEST FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -126,7 +129,6 @@ juce_add_plugin(${TARGET_NAME}
 )        # The name of the final executable, which can differ from the target name
 
 juce_generate_juce_header(${TARGET_NAME})
-
 
 
 
@@ -175,9 +177,9 @@ target_compile_definitions(${TARGET_NAME}
 # GuitarLSTM
 # add_compile_definitions(MODEL_TO_USE=3) # stateful-LSTM
             # Backend-specific definitions
-        # $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
-        # $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
-        # $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>)
+        $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
+        $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
+        $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>
     )
     
 
@@ -247,13 +249,9 @@ MAKE_CMAJ_LIBRARY (
 
 
 
-# Add the path to the anira library as cmake prefix path and find the package
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib)
-find_package(anira REQUIRED)
-
 target_link_libraries(${TARGET_NAME}
     PRIVATE
-        BinaryData
+        # BinaryData
         juce::juce_dsp
         anira::anira
         cmajor_lib

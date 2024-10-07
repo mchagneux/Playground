@@ -145,7 +145,8 @@ bool MainProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* MainProcessor::createEditor()
 {
-    return new MainProcessorEditor (*this);
+    return new MainProcessorEditor(*this);
+    // return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================

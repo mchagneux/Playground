@@ -8,6 +8,8 @@ void add (juce::AudioProcessorParameterGroup& group, std::unique_ptr<Param> para
     group.addChild (std::move (param));
 }
 
+
+
 template <typename Param>
 void add (juce::AudioProcessorValueTreeState::ParameterLayout& group, std::unique_ptr<Param> param)
 {
@@ -46,6 +48,10 @@ namespace ID
     PARAMETER_ID (compressorRatio)
     PARAMETER_ID (compressorAttack)
     PARAMETER_ID (compressorRelease)
+    PARAMETER_ID (filterCutoff)
+    PARAMETER_ID (filterQ)
+    PARAMETER_ID (filterGain)
+    PARAMETER_ID (filterType)
     #undef PARAMETER_ID
 
 }
@@ -187,17 +193,54 @@ struct NeuralParameters
 };
 
 
+struct FilterParameters
+{
+
+    inline static juce::StringArray filterTypes {"Lowpass", "Bandpass", "Highpass", "All-pass", "Notch", "Low shelf", "High shelf", "Bell"};
+    // inline static juce::String defaultFilterType { filterTypes[0] };
+
+
+    template <typename T>
+    explicit FilterParameters (T& layout) 
+        : type (addToLayout<juce::AudioParameterChoice> (layout,
+                                                    juce::ParameterID { ID::filterType, 1 },
+                                                    "Filter Type",
+                                                    filterTypes,
+                                                    0)),
+            gain (addToLayout<Parameter> (layout,
+                                            juce::ParameterID { ID::filterGain, 1 },
+                                            "Filter Gain",
+                                            juce::NormalisableRange<float> (-40.0f, 40.0f),
+                                            0.0f,
+                                            getDbAttributes())),
+            cutoff (addToLayout<Parameter> (layout,
+                                            juce::ParameterID { ID::filterCutoff, 1 },
+                                            "Filter Cutoff",
+                                            juce::NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
+                                            100.0f,
+                                            getHzAttributes())),
+            Q (addToLayout<Parameter> (layout,
+                                            juce::ParameterID { ID::filterQ, 1 },
+                                            "Filter Resonance",
+                                            juce::NormalisableRange<float> (0.1f, 5.0f, 0.0f, 0.25f),
+                                            0.7f))                                   {}
+
+    juce::AudioParameterChoice& type;
+    Parameter& gain;
+    Parameter& cutoff;
+    Parameter& Q;
+};
 
 
 struct PostProcessorParameters
 {
     template <typename T>
     explicit PostProcessorParameters(T& layout)
-        : distortion(addToLayout<juce::AudioProcessorParameterGroup> (layout, "distortion",    "Distortion",    "|")),
-          compressor(addToLayout<juce::AudioProcessorParameterGroup> (layout, "compressor",    "Compressor",    "|")){ }
-    
-    DistortionParameters distortion; 
+        : compressor(addToLayout<juce::AudioProcessorParameterGroup> (layout, "compressor",    "Compressor",    "|")),
+          filter(addToLayout<juce::AudioProcessorParameterGroup>(layout, "filter",    "Filter",    "|")) {}
+
     CompressorParameters compressor; 
+    FilterParameters filter;
 
 }; 
 
