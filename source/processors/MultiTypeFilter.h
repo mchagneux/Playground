@@ -59,6 +59,7 @@ inline static juce::dsp::IIR::Coefficients<SampleType> newBiquadCoeffsForParams(
 }
 
 
+
 class StereoIIRFilter : private juce::AudioProcessorParameter::Listener, public juce::ChangeBroadcaster
 {
 
@@ -92,7 +93,6 @@ public:
         postAnalyzer.setupAnalyser (int (sampleRate), float (sampleRate));
         filter.prepare(spec);
     }
-
 
     void reset()
     {
@@ -176,13 +176,92 @@ private:
 };
 
 
+class CutoffResonanceHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
+{
+public:
+    CutoffResonanceHandle(const FilterParameters& params) : cutoff(params.cutoff), Q(params.Q)
+    {
+        setSize(20, 20);
+        cutoff.addListener(this);
+        Q.addListener(this);
+    }
+
+    ~CutoffResonanceHandle() override 
+    {
+        cutoff.removeListener(this);
+        Q.removeListener(this);
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        auto bounds = getLocalBounds().toFloat().reduced(2);
+        g.setColour(juce::Colours::white);
+        g.fillEllipse(bounds);
+        g.setColour(juce::Colours::black);
+        g.drawEllipse(bounds, 2);
+    }
+
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        // dragger.startDraggingComponent(this, e);
+        // cutoff.beginChangeGesture();
+    }
+
+    void mouseDrag(const juce::MouseEvent& e) override
+    {
+        // dragger.dragComponent(this, e, nullptr);
+        auto position = getBoundsInParent().getCentre().toFloat().getX();
+        auto correspondingCutoff = juce::mapToLog10(position / (float) getParentWidth(), 20.0f, 20000.0f);
+        setCutoffAndResonance(correspondingCutoff, 0.0f);
+        // if (listener != nullptr)
+        //     listener->handleMoved(getBounds().getCentre());
+    }
+
+    void mouseUp(const juce::MouseEvent&) override 
+    {
+        // cutoff.endChangeGesture();
+    }
+
+    void setCutoffAndResonance(float newCutoff, float normResonance)
+    {
+        // cutoff.setValueNotifyingHost(newCutoff);
+    }
+
+    void updateHandlePosition()
+    {
+        auto currentCutoff = cutoff.get(); 
+        auto y = (float) getParentHeight() / 2.0f; 
+        auto x = (float) getParentWidth() * juce::mapFromLog10(currentCutoff, 20.0f, 20000.0f);
+        setCentrePosition(x,y); 
+    }
+private:
+    void parameterValueChanged(int, float) override
+    {
+        updateHandlePosition();
+    }
+    void parameterGestureChanged(int, bool) override 
+    {
+
+    }
+
+    // juce::ComponentDragger dragger;
+    Parameter& cutoff; 
+    Parameter& Q; 
+
+    // FilterControls* listener = nullptr;
+};
+
+
 class MagnitudeResponseComponent : public juce::Component, private juce::ChangeListener, private juce::Timer
 {
 public:
-    MagnitudeResponseComponent(StereoIIRFilter& f) : filter(f)
+    MagnitudeResponseComponent(StereoIIRFilter& f) : filter(f), cutoffResonanceHandle(f.parameters)
     {
         startTimer(20);
         filter.addChangeListener(this);
+        addAndMakeVisible(cutoffResonanceHandle);
+        cutoffResonanceHandle.updateHandlePosition();
+        cutoffResonanceHandle.repaint();
     }
     
     ~MagnitudeResponseComponent() override 
@@ -200,41 +279,75 @@ public:
         const float width = bounds.getWidth();
         const float height = bounds.getHeight();
 
-        // Draw magnitude response
-        g.setColour(juce::Colours::white);
-        juce::Path magnitudePath;
-        bool pathStarted = false;
 
-        for (float x = 0; x < width; ++x)
-        {
-            float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
-            float magnitude = 0; 
-            auto pixelsPerDouble = 2.0f * bounds.getHeight() / juce::Decibels::decibelsToGain (10.0f);
+        
+        if (!plotPhase){
+            // Draw magnitude response
+            g.setColour(juce::Colours::white);
+            juce::Path magnitudePath;
+            bool pathStarted = false;
 
-            magnitude = filter.getMagnitudeForFrequency(freq);
-            float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();
-            // float y = juce::jmap(magnitude, -40.0f, 40.0f, height, 0.0f);
-
-            if (!pathStarted)
+            for (float x = 0; x < width; ++x)
             {
-                magnitudePath.startNewSubPath(x, y);
-                pathStarted = true;
+                float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
+                float magnitude = 0; 
+                auto pixelsPerDouble = 2.0f * height / juce::Decibels::decibelsToGain (10.0f);
+
+                magnitude = filter.getMagnitudeForFrequency(freq);
+                float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();
+                // float y = juce::jmap(magnitude, -40.0f, 40.0f, height, 0.0f);
+
+                if (!pathStarted)
+                {
+                    magnitudePath.startNewSubPath(x, y);
+                    pathStarted = true;
+                }
+                else
+                {
+                    magnitudePath.lineTo(x, y);
+                }
             }
-            else
-            {
-                magnitudePath.lineTo(x, y);
-            }
+
+            g.strokePath(magnitudePath, juce::PathStrokeType(2.0f));
         }
 
-        g.strokePath(magnitudePath, juce::PathStrokeType(2.0f));
+        else {
+            // Draw phase response
+            g.setColour(juce::Colours::yellow);
+            juce::Path phasePath;
+            bool pathStarted = false;
+
+            for (float x = 0; x < width; ++x)
+            {
+                float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
+                float phase = filter.getPhaseForFrequency(freq);
+                float y = juce::jmap(phase, -juce::MathConstants<float>::pi, juce::MathConstants<float>::pi, height, 0.0f);
+
+                if (!pathStarted)
+                {
+                    phasePath.startNewSubPath(x, y);
+                    pathStarted = true;
+                }
+                else
+                {
+                    phasePath.lineTo(x, y);
+                }
+            }
+
+            g.strokePath(phasePath, juce::PathStrokeType(2.0f));
+        }
     
 
         auto plotFrame = getLocalBounds().toFloat();
+
+
         filter.postAnalyzer.createPath(analyzerPath, plotFrame, 20.0f);
         g.setColour (juce::Colours::grey);
         // g.drawFittedText ("Output", plotFrame.reduced (8, 28), juce::Justification::topRight, 1);
+
+
+
         g.strokePath (analyzerPath, juce::PathStrokeType (1.0));
-    
     
     }
 
@@ -245,7 +358,9 @@ public:
     }
 
 
+
 private:
+
 
     void changeListenerCallback(juce::ChangeBroadcaster * ) override
     {
@@ -260,96 +375,33 @@ private:
 
     StereoIIRFilter& filter;
     juce::Path analyzerPath; 
+    bool plotPhase = false; 
+    CutoffResonanceHandle cutoffResonanceHandle; 
 
 };
 
-class PhaseResponseComponent : public juce::Component, private juce::ChangeListener
-{
-public:
-    PhaseResponseComponent(StereoIIRFilter& f) : filter(f) 
-    {
-        filter.addChangeListener(this);
-    }
-    
-    ~PhaseResponseComponent() override 
-    {
-        filter.removeChangeListener(this);
-    }
-
-    void paint(juce::Graphics& g) override
-    {
-
-        g.fillAll(juce::Colours::black);
-
-        const auto bounds = getLocalBounds().toFloat();
-        const float width = bounds.getWidth();
-        const float height = bounds.getHeight();
-
-
-
-        // Draw phase response
-        g.setColour(juce::Colours::yellow);
-        juce::Path phasePath;
-        bool pathStarted = false;
-
-        for (float x = 0; x < width; ++x)
-        {
-            float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
-            float phase = filter.getPhaseForFrequency(freq);
-            float y = juce::jmap(phase, -juce::MathConstants<float>::pi, juce::MathConstants<float>::pi, height, 0.0f);
-
-            if (!pathStarted)
-            {
-                phasePath.startNewSubPath(x, y);
-                pathStarted = true;
-            }
-            else
-            {
-                phasePath.lineTo(x, y);
-            }
-        }
-
-        g.strokePath(phasePath, juce::PathStrokeType(2.0f));
-    }
-
-
-    void resized() override
-    {
-        repaint();
-    }
-
-
-private:
-
-    void changeListenerCallback(juce::ChangeBroadcaster * ) override
-    {
-        repaint();
-    }
-
-    StereoIIRFilter& filter;
-};
+// };
 
 class FilterResponseComponent : public juce::Component 
 {
 public: 
-    FilterResponseComponent(StereoIIRFilter& f): magnitudeResponseComponent(f), phaseResponseComponent(f) 
+    FilterResponseComponent(StereoIIRFilter& f): magnitudeResponseComponent(f)// , phaseResponseComponent(f) 
     {
         addAndMakeVisible(magnitudeResponseComponent);
-        addAndMakeVisible(phaseResponseComponent);
+        // addAndMakeVisible(phaseResponseComponent);
     }
-
 
     void resized() override 
     {
         auto bounds = getLocalBounds();
-        magnitudeResponseComponent.setBounds(bounds.removeFromTop((int) (getHeight() / 2)));
-        phaseResponseComponent.setBounds(bounds);
+        magnitudeResponseComponent.setBounds(bounds);
+        // phaseResponseComponent.setBounds(bounds);
         repaint();
     }
 
 private: 
     MagnitudeResponseComponent magnitudeResponseComponent; 
-    PhaseResponseComponent phaseResponseComponent; 
+    // PhaseResponseComponent phaseResponseComponent; 
 
     
 }; 
@@ -361,7 +413,7 @@ struct FilterControls: public juce::Component
           filterTypeSelector(editorIn, f.parameters.type),
           filterGain(editorIn, f.parameters.gain),
           filterCutoff(editorIn, f.parameters.cutoff),
-          filterQ(editorIn, f.parameters.Q) 
+          filterQ(editorIn, f.parameters.Q)
     { 
         addAllAndMakeVisible(*this, 
                 filterResponse, 
@@ -371,9 +423,9 @@ struct FilterControls: public juce::Component
                 filterQ);
     }
           
-    ~FilterControls() 
+    ~FilterControls() override
     {
-
+        // cutoffResonanceHandle.removeListener();
     }
 
     void resized() override 
@@ -382,6 +434,13 @@ struct FilterControls: public juce::Component
         auto responseArea = r.removeFromTop((int) (0.6 * getHeight())); 
         filterResponse.setBounds(responseArea);
         performLayout(r, filterTypeSelector, filterCutoff, filterQ, filterGain);
+        // updateHandlePosition();
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        // Component::paint(g);
+        // updateHandlePosition();
     }
 
 private: 
@@ -390,5 +449,6 @@ private:
     AttachedSlider filterGain; 
     AttachedSlider filterCutoff; 
     AttachedSlider filterQ; 
+
 
 };

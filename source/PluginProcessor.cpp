@@ -129,7 +129,11 @@ bool MainProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 void MainProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
+
+    auto message = juce::MidiMessage::noteOn (1, 28, 1.0f); 
+    // message.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+    midiMessages.addEvent(message, 0);
+    // juce::ignoreUnused (midiMessages);
 
     // mainProcessor->processBlock (buffer, midiMessages);
     cmajorJITLoaderPlugin->processBlock(buffer, midiMessages);
