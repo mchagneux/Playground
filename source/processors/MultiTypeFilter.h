@@ -179,17 +179,24 @@ private:
 class CutoffResonanceHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
 {
 public:
-    CutoffResonanceHandle(const FilterParameters& params) : cutoff(params.cutoff), Q(params.Q)
+    CutoffResonanceHandle(const FilterParameters& params) : cutoff(params.cutoff), Q(params.Q), gain(params.gain), type(params.type)
     {
         setSize(20, 20);
+        handleCutoff = cutoff.get(); 
+        handleQ = Q.get();
+        handleGain = gain.get(); 
+
         cutoff.addListener(this);
         Q.addListener(this);
+        gain.addListener(this);
     }
 
     ~CutoffResonanceHandle() override 
     {
         cutoff.removeListener(this);
         Q.removeListener(this);
+        gain.removeListener(this); 
+
     }
 
     void paint(juce::Graphics& g) override
@@ -203,50 +210,96 @@ public:
 
     void mouseDown(const juce::MouseEvent& e) override
     {
-        // dragger.startDraggingComponent(this, e);
-        // cutoff.beginChangeGesture();
+        dragger.startDraggingComponent(this, e);
+        cutoff.beginChangeGesture();
+        Q.beginChangeGesture();
+    }
+
+    float cutoffToRelativeX(float c)
+    {
+        return juce::mapFromLog10(c, 20.0f, 20000.0f); 
+    }
+
+    float XToCutoff(float x)
+    {
+        return juce::mapToLog10(x / (float) getParentWidth(), 20.0f, 20000.0f); 
+    }
+
+    float normalizedYToNormalizedQ(float normY)
+    {
+        return 1.0f - normY; 
+    }
+
+    float QToNormalizedY(float q)
+    {
+        return 1.0f - Q.convertTo0to1(q); 
+    }
+
+    float normYToGain(float normY)
+    {
+        return 0.0f; //TODO 
     }
 
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        // dragger.dragComponent(this, e, nullptr);
-        auto position = getBoundsInParent().getCentre().toFloat().getX();
-        auto correspondingCutoff = juce::mapToLog10(position / (float) getParentWidth(), 20.0f, 20000.0f);
-        setCutoffAndResonance(correspondingCutoff, 0.0f);
-        // if (listener != nullptr)
-        //     listener->handleMoved(getBounds().getCentre());
+        dragger.dragComponent(this, e, nullptr);
+        auto x = getBoundsInParent().getCentre().toFloat().getX();
+        auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
+
+
+        auto correspondingCutoff = XToCutoff(x);
+        auto correspondingQ = Q.convertFrom0to1(normalizedYToNormalizedQ(normalizedY));
+        auto correspondingGain = normYToGain(normalizedY); 
+        handleCutoff = correspondingCutoff; 
+        handleQ = correspondingQ; 
+        handleGain = correspondingGain; 
+
+        updateParams(correspondingCutoff, correspondingQ, correspondingGain);
+
     }
 
     void mouseUp(const juce::MouseEvent&) override 
     {
-        // cutoff.endChangeGesture();
+        cutoff.endChangeGesture();
+        Q.endChangeGesture();
     }
 
-    void setCutoffAndResonance(float newCutoff, float normResonance)
+    void updateParams(float newCutoff, float newQ, float newGain)
     {
-        // cutoff.setValueNotifyingHost(newCutoff);
+        cutoff.setValueNotifyingHost(cutoff.convertTo0to1(newCutoff));
+        Q.setValueNotifyingHost(Q.convertTo0to1(newQ));
     }
 
-    void updateHandlePosition()
+    void updateHandlePosition(float newCutoff, float newQ)
     {
-        auto currentCutoff = cutoff.get(); 
-        auto y = (float) getParentHeight() / 2.0f; 
-        auto x = (float) getParentWidth() * juce::mapFromLog10(currentCutoff, 20.0f, 20000.0f);
-        setCentrePosition(x,y); 
+        auto x = cutoffToRelativeX(newCutoff); 
+        auto y = QToNormalizedY(newQ);
+        setCentreRelative(x, y);
+        handleCutoff = newCutoff; 
+        handleQ = newQ;
     }
 private:
     void parameterValueChanged(int, float) override
     {
-        updateHandlePosition();
+        auto newCutoff = cutoff.get(); 
+        auto newQ = Q.get(); 
+
+        if (newCutoff != handleCutoff || newQ != handleQ)
+            updateHandlePosition(newCutoff, newQ);
     }
     void parameterGestureChanged(int, bool) override 
     {
 
     }
 
-    // juce::ComponentDragger dragger;
+    juce::ComponentDragger dragger;
+    float handleCutoff = 0.0f; 
+    float handleQ = 0.0f;
+    float handleGain = 0.0f;     
     Parameter& cutoff; 
     Parameter& Q; 
+    Parameter& gain; 
+    juce::AudioParameterChoice& type; 
 
     // FilterControls* listener = nullptr;
 };
@@ -260,8 +313,8 @@ public:
         startTimer(20);
         filter.addChangeListener(this);
         addAndMakeVisible(cutoffResonanceHandle);
-        cutoffResonanceHandle.updateHandlePosition();
-        cutoffResonanceHandle.repaint();
+        // cutoffResonanceHandle.updateHandlePosition();
+        // repaint();
     }
     
     ~MagnitudeResponseComponent() override 
