@@ -185,10 +185,12 @@ public:
         handleCutoff = cutoff.get(); 
         handleQ = Q.get();
         handleGain = gain.get(); 
+        updateYisQ();
 
         cutoff.addListener(this);
         Q.addListener(this);
         gain.addListener(this);
+        type.addListener(this);
     }
 
     ~CutoffResonanceHandle() override 
@@ -196,6 +198,7 @@ public:
         cutoff.removeListener(this);
         Q.removeListener(this);
         gain.removeListener(this); 
+        type.removeListener(this);
 
     }
 
@@ -206,13 +209,6 @@ public:
         g.fillEllipse(bounds);
         g.setColour(juce::Colours::black);
         g.drawEllipse(bounds, 2);
-    }
-
-    void mouseDown(const juce::MouseEvent& e) override
-    {
-        dragger.startDraggingComponent(this, e);
-        cutoff.beginChangeGesture();
-        Q.beginChangeGesture();
     }
 
     float cutoffToRelativeX(float c)
@@ -237,7 +233,18 @@ public:
 
     float normYToGain(float normY)
     {
-        return 0.0f; //TODO 
+        auto properlyOrderedNormY =  1.0f - normY; //TODO 
+        
+    }
+
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        dragger.startDraggingComponent(this, e);
+        cutoff.beginChangeGesture();
+
+        if (YisQ)
+            Q.beginChangeGesture();
+        else gain.beginChangeGesture();
     }
 
     void mouseDrag(const juce::MouseEvent& e) override
@@ -246,52 +253,95 @@ public:
         auto x = getBoundsInParent().getCentre().toFloat().getX();
         auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
 
-
         auto correspondingCutoff = XToCutoff(x);
-        auto correspondingQ = Q.convertFrom0to1(normalizedYToNormalizedQ(normalizedY));
-        auto correspondingGain = normYToGain(normalizedY); 
         handleCutoff = correspondingCutoff; 
-        handleQ = correspondingQ; 
-        handleGain = correspondingGain; 
+        updateCutoff(correspondingCutoff);
 
-        updateParams(correspondingCutoff, correspondingQ, correspondingGain);
+        if (YisQ || isCommandDown())
+        {
+            auto correspondingQ = Q.convertFrom0to1(normalizedYToNormalizedQ(normalizedY));
+            handleQ = correspondingQ; 
+            updateQ(correspondingQ);
+        }
+        else
+        {
+            auto correspondingGain = gain.convertFrom0to1(1.0f - normalizedY); 
+            handleGain = correspondingGain; 
+            updateGain(correspondingGain);   
+        }
 
+    }
+
+    bool isCommandDown()
+    {
+        return juce::ModifierKeys::currentModifiers.isCommandDown();
     }
 
     void mouseUp(const juce::MouseEvent&) override 
     {
         cutoff.endChangeGesture();
-        Q.endChangeGesture();
+        if (YisQ)
+            Q.endChangeGesture();
+        else gain.endChangeGesture();
     }
 
-    void updateParams(float newCutoff, float newQ, float newGain)
+    void updateQ(float newQ)
     {
-        cutoff.setValueNotifyingHost(cutoff.convertTo0to1(newCutoff));
         Q.setValueNotifyingHost(Q.convertTo0to1(newQ));
     }
 
-    void updateHandlePosition(float newCutoff, float newQ)
+    void updateGain(float newGain)
+    {
+        gain.setValueNotifyingHost(gain.convertTo0to1(newGain));
+    }
+
+    void updateCutoff(float newCutoff)
+    {
+        cutoff.setValueNotifyingHost(cutoff.convertTo0to1(newCutoff));
+    }
+
+    void updateHandlePosition(float newCutoff, float newQ, float newGain)
     {
         auto x = cutoffToRelativeX(newCutoff); 
-        auto y = QToNormalizedY(newQ);
+        float y; 
+        if (YisQ)  y = QToNormalizedY(newQ);
+        
+        else y = 1.0f - gain.convertTo0to1(newGain);
+        
         setCentreRelative(x, y);
         handleCutoff = newCutoff; 
         handleQ = newQ;
+        handleGain = newGain;
     }
-private:
-    void parameterValueChanged(int, float) override
-    {
-        auto newCutoff = cutoff.get(); 
-        auto newQ = Q.get(); 
 
-        if (newCutoff != handleCutoff || newQ != handleQ)
-            updateHandlePosition(newCutoff, newQ);
+    void updateYisQ()
+    {
+        auto filterType = static_cast<FilterType> (type.getIndex()); 
+        if(filterType == FilterType::LowPass || filterType == FilterType::HighPass || filterType == FilterType::BandPass || filterType == FilterType::Notch) 
+            YisQ = true; 
+        else YisQ = false; 
+    }
+
+private:
+    void parameterValueChanged(int parameterIndex, float) override
+    {
+        if (parameterIndex == type.getParameterIndex()) updateYisQ();
+        else
+        {
+            auto newCutoff = cutoff.get(); 
+            auto newQ = Q.get(); 
+            auto newGain = gain.get();
+
+            if (newCutoff != handleCutoff || newQ != handleQ || newGain != handleGain)
+                updateHandlePosition(newCutoff, newQ, newGain);
+        }
     }
     void parameterGestureChanged(int, bool) override 
     {
 
     }
 
+    bool YisQ = false;  
     juce::ComponentDragger dragger;
     float handleCutoff = 0.0f; 
     float handleQ = 0.0f;
@@ -490,11 +540,11 @@ struct FilterControls: public juce::Component
         // updateHandlePosition();
     }
 
-    void paint(juce::Graphics& g) override
-    {
-        // Component::paint(g);
-        // updateHandlePosition();
-    }
+    // void paint(juce::Graphics& g) override
+    // {
+    //     Component::paint(g);
+    // //     // updateHandlePosition();
+    // }
 
 private: 
     FilterResponseComponent filterResponse; 
