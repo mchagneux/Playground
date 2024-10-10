@@ -59,7 +59,6 @@ inline static juce::dsp::IIR::Coefficients<SampleType> newBiquadCoeffsForParams(
 }
 
 
-
 class StereoIIRFilter : private juce::AudioProcessorParameter::Listener, public juce::ChangeBroadcaster
 {
 
@@ -175,7 +174,6 @@ private:
 
 };
 
-
 class CutoffResonanceHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
 {
 public:
@@ -247,27 +245,54 @@ public:
         else gain.beginChangeGesture();
     }
 
+    float addToCurrentQNormalized(float normalizedAmtToAdd)
+    {
+        return Q.convertTo0to1(Q.get()) + normalizedAmtToAdd; 
+    }
+
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        dragger.dragComponent(this, e, nullptr);
-        auto x = getBoundsInParent().getCentre().toFloat().getX();
-        auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
 
-        auto correspondingCutoff = XToCutoff(x);
-        handleCutoff = correspondingCutoff; 
-        updateCutoff(correspondingCutoff);
-
-        if (YisQ || isCommandDown())
+        if (YisQ)
         {
-            auto correspondingQ = Q.convertFrom0to1(normalizedYToNormalizedQ(normalizedY));
+            dragger.dragComponent(this, e, nullptr);
+            auto x = getBoundsInParent().getCentre().toFloat().getX();
+            auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
+
+            auto correspondingCutoff = XToCutoff(x);
+            handleCutoff = correspondingCutoff; 
+            updateCutoff(correspondingCutoff);
+
+
+            auto correspondingQ = Q.convertFrom0to1(1.0f - normalizedY);
             handleQ = correspondingQ; 
             updateQ(correspondingQ);
         }
         else
         {
-            auto correspondingGain = gain.convertFrom0to1(1.0f - normalizedY); 
-            handleGain = correspondingGain; 
-            updateGain(correspondingGain);   
+            if (isCommandDown())
+            {
+                // auto centreY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
+                auto normalizeddragY = (float) e.getDistanceFromDragStartY() / (float) getParentHeight() ; 
+                auto correspondingQ = addToCurrentQNormalized(-normalizeddragY);
+                handleQ = correspondingQ; 
+                updateQ(correspondingQ);
+
+            }
+            else
+            {
+                dragger.dragComponent(this, e, nullptr);
+                auto x = getBoundsInParent().getCentre().toFloat().getX();
+                auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
+
+                auto correspondingCutoff = XToCutoff(x);
+                handleCutoff = correspondingCutoff; 
+                updateCutoff(correspondingCutoff);
+
+                auto correspondingGain = gain.convertFrom0to1(1.0f - normalizedY); 
+                handleGain = correspondingGain; 
+                updateGain(correspondingGain);   
+            }
         }
 
     }
@@ -353,7 +378,6 @@ private:
 
     // FilterControls* listener = nullptr;
 };
-
 
 class MagnitudeResponseComponent : public juce::Component, private juce::ChangeListener, private juce::Timer
 {
@@ -482,8 +506,6 @@ private:
     CutoffResonanceHandle cutoffResonanceHandle; 
 
 };
-
-// };
 
 class FilterResponseComponent : public juce::Component 
 {
