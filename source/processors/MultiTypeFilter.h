@@ -174,10 +174,11 @@ private:
 
 };
 
-class CutoffResonanceHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
+class FilterHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
 {
 public:
-    CutoffResonanceHandle(const FilterParameters& params) : cutoff(params.cutoff), Q(params.Q), gain(params.gain), type(params.type)
+    FilterHandle(juce::AudioProcessorEditor& editorIn, const FilterParameters& params) 
+        : cutoff(params.cutoff), Q(params.Q), gain(params.gain), type(params.type), editor(editorIn)
     {
         setSize(20, 20);
         handleCutoff = cutoff.get(); 
@@ -191,7 +192,7 @@ public:
         type.addListener(this);
     }
 
-    ~CutoffResonanceHandle() override 
+    ~FilterHandle() override 
     {
         cutoff.removeListener(this);
         Q.removeListener(this);
@@ -229,14 +230,52 @@ public:
         return 1.0f - Q.convertTo0to1(q); 
     }
 
-    float normYToGain(float normY)
+    // float normYToGain(float normY)
+    // {
+    //     auto properlyOrderedNormY =  1.0f - normY; //TODO 
+    // }
+
+    bool isRightClick() const noexcept
     {
-        auto properlyOrderedNormY =  1.0f - normY; //TODO 
-        
+        return juce::ModifierKeys::currentModifiers.isRightButtonDown();
     }
 
     void mouseDown(const juce::MouseEvent& e) override
     {
+        if (isRightClick())
+        {   
+            struct FilterPropertyControls : public juce::Component
+            {
+            public:
+                FilterPropertyControls(juce::AudioProcessorEditor& editorIn, juce::AudioParameterChoice& typeParam)
+                    : filterType(editorIn, typeParam)
+                {
+                    addAndMakeVisible(filterType);
+                }
+
+                void resized() override
+                {
+                    auto r = getLocalBounds();
+                    performLayout(r, filterType); 
+                }
+
+            private: 
+                AttachedCombo filterType;
+            };
+
+
+            auto filterControls = std::make_unique<FilterPropertyControls>(editor, type);
+            auto r = getParentComponent()->getLocalBounds().toFloat(); 
+            auto filterControlsWidth = 0.4 * r.getWidth();
+            auto filterControlsHeight = 0.4 * r.getHeight(); 
+            filterControls->setSize((int) filterControlsWidth, (int) filterControlsHeight); 
+            auto& calloutBox = juce::CallOutBox::launchAsynchronously (std::move (filterControls),
+                                                getBoundsInParent(),
+                                                getParentComponent());
+            
+            return; 
+        }
+
         dragger.startDraggingComponent(this, e);
         cutoff.beginChangeGesture();
 
@@ -253,16 +292,18 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override
     {
 
+        auto x = getBoundsInParent().getCentre().toFloat().getX();
+        auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
+        auto normalizedDragY = (float) e.getDistanceFromDragStartY() / (float) getParentHeight() ; 
+
+
         if (YisQ)
         {
             dragger.dragComponent(this, e, nullptr);
-            auto x = getBoundsInParent().getCentre().toFloat().getX();
-            auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
 
             auto correspondingCutoff = XToCutoff(x);
             handleCutoff = correspondingCutoff; 
             updateCutoff(correspondingCutoff);
-
 
             auto correspondingQ = Q.convertFrom0to1(1.0f - normalizedY);
             handleQ = correspondingQ; 
@@ -272,18 +313,13 @@ public:
         {
             if (isCommandDown())
             {
-                // auto centreY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
-                auto normalizeddragY = (float) e.getDistanceFromDragStartY() / (float) getParentHeight() ; 
-                auto correspondingQ = addToCurrentQNormalized(-normalizeddragY);
+                auto correspondingQ = addToCurrentQNormalized(-normalizedDragY);
                 handleQ = correspondingQ; 
                 updateQ(correspondingQ);
-
             }
             else
             {
                 dragger.dragComponent(this, e, nullptr);
-                auto x = getBoundsInParent().getCentre().toFloat().getX();
-                auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
 
                 auto correspondingCutoff = XToCutoff(x);
                 handleCutoff = correspondingCutoff; 
@@ -350,15 +386,16 @@ public:
 private:
     void parameterValueChanged(int parameterIndex, float) override
     {
-        if (parameterIndex == type.getParameterIndex()) updateYisQ();
+        if (parameterIndex == type.getParameterIndex()) 
+            updateYisQ();
         else
         {
             auto newCutoff = cutoff.get(); 
             auto newQ = Q.get(); 
             auto newGain = gain.get();
 
-            if (newCutoff != handleCutoff || newQ != handleQ || newGain != handleGain)
-                updateHandlePosition(newCutoff, newQ, newGain);
+            // if ((! juce::approximatelyEqual(newCutoff, handleCutoff)) || (! juce::approximatelyEqual(newQ, handleQ) ) || (! juce::approximatelyEqual(newGain, handleGain)))
+                // updateHandlePosition(newCutoff, newQ, newGain);
         }
     }
     void parameterGestureChanged(int, bool) override 
@@ -375,6 +412,7 @@ private:
     Parameter& Q; 
     Parameter& gain; 
     juce::AudioParameterChoice& type; 
+    juce::AudioProcessorEditor& editor; 
 
     // FilterControls* listener = nullptr;
 };
@@ -382,12 +420,13 @@ private:
 class MagnitudeResponseComponent : public juce::Component, private juce::ChangeListener, private juce::Timer
 {
 public:
-    MagnitudeResponseComponent(StereoIIRFilter& f) : filter(f), cutoffResonanceHandle(f.parameters)
+    MagnitudeResponseComponent(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f) 
+        : filter(f), handle(editorIn, f.parameters)
     {
         startTimer(20);
         filter.addChangeListener(this);
-        addAndMakeVisible(cutoffResonanceHandle);
-        // cutoffResonanceHandle.updateHandlePosition();
+        addAndMakeVisible(handle);
+        // FilterHandle.updateHandlePosition();
         // repaint();
     }
     
@@ -472,8 +511,6 @@ public:
         g.setColour (juce::Colours::grey);
         // g.drawFittedText ("Output", plotFrame.reduced (8, 28), juce::Justification::topRight, 1);
 
-
-
         g.strokePath (analyzerPath, juce::PathStrokeType (1.0));
     
     }
@@ -503,14 +540,14 @@ private:
     StereoIIRFilter& filter;
     juce::Path analyzerPath; 
     bool plotPhase = false; 
-    CutoffResonanceHandle cutoffResonanceHandle; 
+    FilterHandle handle; 
 
 };
 
 class FilterResponseComponent : public juce::Component 
 {
 public: 
-    FilterResponseComponent(StereoIIRFilter& f): magnitudeResponseComponent(f)// , phaseResponseComponent(f) 
+    FilterResponseComponent(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f): magnitudeResponseComponent(editorIn, f)// , phaseResponseComponent(f) 
     {
         addAndMakeVisible(magnitudeResponseComponent);
         // addAndMakeVisible(phaseResponseComponent);
@@ -534,7 +571,7 @@ private:
 struct FilterControls: public juce::Component
 {
     FilterControls(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f) 
-        : filterResponse(f),
+        : filterResponse(editorIn, f),
           filterTypeSelector(editorIn, f.parameters.type),
           filterGain(editorIn, f.parameters.gain),
           filterCutoff(editorIn, f.parameters.cutoff),
@@ -550,7 +587,7 @@ struct FilterControls: public juce::Component
           
     ~FilterControls() override
     {
-        // cutoffResonanceHandle.removeListener();
+        // FilterHandle.removeListener();
     }
 
     void resized() override 
@@ -561,12 +598,6 @@ struct FilterControls: public juce::Component
         performLayout(r, filterTypeSelector, filterCutoff, filterQ, filterGain);
         // updateHandlePosition();
     }
-
-    // void paint(juce::Graphics& g) override
-    // {
-    //     Component::paint(g);
-    // //     // updateHandlePosition();
-    // }
 
 private: 
     FilterResponseComponent filterResponse; 
