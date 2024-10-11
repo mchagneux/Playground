@@ -178,7 +178,11 @@ class FilterHandle : public juce::Component, private juce::AudioProcessorParamet
 {
 public:
     FilterHandle(juce::AudioProcessorEditor& editorIn, const FilterParameters& params) 
-        : cutoff(params.cutoff), Q(params.Q), gain(params.gain), type(params.type), editor(editorIn)
+        : cutoff(params.cutoff), 
+          Q(params.Q), 
+          gain(params.gain), 
+          type(params.type), 
+          editor(editorIn)
     {
         setSize(20, 20);
         handleCutoff = cutoff.get(); 
@@ -289,6 +293,12 @@ public:
         return Q.convertTo0to1(Q.get()) + normalizedAmtToAdd; 
     }
 
+    float normalizedYToGain(float normalizedY)
+    {
+        auto range = juce::NormalisableRange<float>(-10.0f, 10.0f, 0.0f);
+        return range.convertFrom0to1(1.0f - normalizedY);
+    }
+
     void mouseDrag(const juce::MouseEvent& e) override
     {
 
@@ -325,7 +335,7 @@ public:
                 handleCutoff = correspondingCutoff; 
                 updateCutoff(correspondingCutoff);
 
-                auto correspondingGain = gain.convertFrom0to1(1.0f - normalizedY); 
+                auto correspondingGain = normalizedYToGain(normalizedY);
                 handleGain = correspondingGain; 
                 updateGain(correspondingGain);   
             }
@@ -393,7 +403,6 @@ private:
             auto newCutoff = cutoff.get(); 
             auto newQ = Q.get(); 
             auto newGain = gain.get();
-
             // if ((! juce::approximatelyEqual(newCutoff, handleCutoff)) || (! juce::approximatelyEqual(newQ, handleQ) ) || (! juce::approximatelyEqual(newGain, handleGain)))
                 // updateHandlePosition(newCutoff, newQ, newGain);
         }
@@ -457,7 +466,7 @@ public:
             {
                 float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
                 float magnitude = 0; 
-                auto pixelsPerDouble = 2.0f * height / juce::Decibels::decibelsToGain (10.0f);
+                auto pixelsPerDouble = height / juce::Decibels::decibelsToGain (10.0f);
 
                 magnitude = filter.getMagnitudeForFrequency(freq);
                 float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();

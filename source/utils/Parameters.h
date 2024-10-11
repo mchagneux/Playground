@@ -210,7 +210,7 @@ struct FilterParameters
             gain (addToLayout<Parameter> (layout,
                                             juce::ParameterID { ID::filterGain, 1 },
                                             "Filter Gain",
-                                            juce::NormalisableRange<float> (-40.0f, 40.0f),
+                                            juce::NormalisableRange<float> (-10.0f, 10.0f),
                                             0.0f,
                                             getDbAttributes())),
             cutoff (addToLayout<Parameter> (layout,
