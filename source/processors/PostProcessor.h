@@ -1,9 +1,9 @@
 #pragma once 
 #include <JuceHeader.h>
-#include "./MultiTypeFilter.h"
 #include "../utils/Parameters.h"
 #include "../utils/Misc.h"
 #include "./Compressor.h"
+#include "./EQ.h"
 
 struct PostProcessor : public juce::AudioProcessor
 {
@@ -13,7 +13,7 @@ public:
     PostProcessor (const PostProcessorParameters& p)
         : juce::AudioProcessor (getBusesProperties()), 
           parameters(p), 
-          filter(parameters.filter),
+          eq(parameters.eq),
           compressor(parameters.compressor) { }
     
     ~PostProcessor() override {}
@@ -31,7 +31,7 @@ public:
             return;
 
         auto spec  = juce::dsp::ProcessSpec{ sampleRate, (juce::uint32) samplesPerBlock, (juce::uint32) channels };
-        filter.prepare(spec);
+        eq.prepare(spec);
         compressor.prepare(spec);
         // filter.reset();
 
@@ -39,7 +39,7 @@ public:
         
     void reset() final
     {
-        filter.reset();
+        eq.reset();
         compressor.reset();
         // chain.reset();
         // update();
@@ -70,8 +70,8 @@ public:
         auto inoutBlock = juce::dsp::AudioBlock<float> (buffer).getSubsetChannelBlock (0, (size_t) numChannels);
         auto context = juce::dsp::ProcessContextReplacing<SampleType> (inoutBlock);
 
-        filter.process (context);
-        filter.postAnalyzer.addAudioData(buffer, 0, 2);
+        eq.process (context);
+        eq.postAnalyzer.addAudioData(buffer, 0, 2);
         compressor.process(context);
     }
 
@@ -116,9 +116,9 @@ public:
 
     const PostProcessorParameters& parameters; 
 
-    auto& getfilter()
+    auto& getEQ()
     {
-        return filter; 
+        return eq; 
     }
     auto& getCompressor()
     {
@@ -126,7 +126,7 @@ public:
     }
 private:
 
-    StereoIIRFilter filter; 
+    EQ eq; 
     Compressor compressor; 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PostProcessor)
@@ -137,22 +137,22 @@ struct PostProcessorControls final : public juce::Component
 {
 
     explicit PostProcessorControls (juce::AudioProcessorEditor& editor, PostProcessor& pp)
-        : filter(editor, pp.getfilter()), 
+        : eq(editor, pp.getEQ()), 
           compressor(editor, pp.parameters.compressor) 
           
     {
-        addAllAndMakeVisible (*this, filter, compressor);
+        addAllAndMakeVisible (*this, eq, compressor);
     }
 
     void resized() override
     {
         auto r = getLocalBounds(); 
         // distortion.setBounds(r.removeFromTop((int) (getHeight() / 2))); 
-        filter.setBounds(r.removeFromTop(getHeight() / 2)); 
+        eq.setBounds(r.removeFromTop(getHeight() / 2)); 
         compressor.setBounds(r.removeFromTop((int) (r.getHeight() / 2)));
     }
 
-    FilterControls filter; 
+    EQControls eq; 
     CompressorControls compressor; 
     
 };

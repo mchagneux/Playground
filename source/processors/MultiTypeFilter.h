@@ -2,7 +2,6 @@
 #include <JuceHeader.h>
 #include "../utils/Parameters.h"
 #include "../utils/Misc.h"
-#include "../utils/FrequencyAnalyzer.h"
 #include "./Components.h"
 
 enum class FilterType
@@ -65,31 +64,33 @@ class StereoIIRFilter : private juce::AudioProcessorParameter::Listener, public 
 public:
 
 
-    StereoIIRFilter(const FilterParameters& p) : parameters(p) 
-    {
-        parameters.cutoff.addListener(this);
-        parameters.Q.addListener(this);
-        parameters.gain.addListener(this);
-        parameters.type.addListener(this);
-        parameterValueChanged(0, 0.0);
-
-    }
+    StereoIIRFilter() = default; 
 
     ~StereoIIRFilter() override
     {
-        parameters.cutoff.removeListener(this);
-        parameters.Q.removeListener(this);
-        parameters.gain.removeListener(this);
-        parameters.type.removeListener(this);
-        postAnalyzer.stopThread(1000);
+        if (parameters != nullptr){
+            parameters->cutoff.removeListener(this);
+            parameters->Q.removeListener(this);
+            parameters->gain.removeListener(this);
+            parameters->type.removeListener(this);
+        }
+    }
 
+    void connectToParameters(const FilterParameters& p)
+    {
+        p.cutoff.addListener(this);
+        p.Q.addListener(this);
+        p.gain.addListener(this);
+        p.type.addListener(this);
+
+        parameters = &p;
+        parameterValueChanged(0, 0.0);
     }
 
 
     void prepare (const juce::dsp::ProcessSpec& spec)
     {
         sampleRate = (SampleType) spec.sampleRate; 
-        postAnalyzer.setupAnalyser (int (sampleRate), float (sampleRate));
         filter.prepare(spec);
     }
 
@@ -105,11 +106,8 @@ public:
             realTimeCoeffsRequireUpdate.store(false);
         }
 
-        
         filter.process (context);
 
-        // auto buffer = juce::AudioBuffer<float>(2, ) 
-        // postAnalyzer.addAudioData(context.getOutputBlock(), 0, (int) context.getOutputBlock().getNumChannels());
     }
 
     SampleType getPhaseForFrequency(SampleType frequency) const noexcept
@@ -122,30 +120,35 @@ public:
         return (SampleType) nonRealtimeCoeffs.getMagnitudeForFrequency(frequency,  sampleRate);
     }
 
-
-
-    const FilterParameters & parameters; 
-    Analyzer<SampleType> postAnalyzer; 
+    const FilterParameters * parameters; 
 
 
 private:
 
+
+    std::tuple<FilterType, SampleType, SampleType, SampleType> getNewParameterValues() const noexcept
+    {
+        return {static_cast<FilterType>(parameters->type.getIndex()), 
+                static_cast<SampleType>(parameters->gain.get()), 
+                static_cast<SampleType>(parameters->cutoff.get()),
+                static_cast<SampleType>(parameters->Q.get()) };
+    }
+
     void updateNonRealTimeCoeffs()
     {
-        nonRealtimeCoeffs = newBiquadCoeffsForParams(filterType, gain, cutoff, q, sampleRate);
+        auto [filterType, gain, cutoff, Q] = getNewParameterValues(); 
+        nonRealtimeCoeffs = newBiquadCoeffsForParams(filterType, gain, cutoff, Q, sampleRate);
     }
 
     void updateRealtimeCoeffs()
     {
-        *filter.state = newBiquadCoeffsForParams(filterType, gain, cutoff, q, sampleRate);
+        auto [filterType, gain, cutoff, Q] = getNewParameterValues(); 
+        *filter.state = newBiquadCoeffsForParams(filterType, gain, cutoff, Q, sampleRate);
     }
 
     void parameterValueChanged(int, float) override
     {
-        filterType = static_cast<FilterType>(parameters.type.getIndex()); 
-        gain = static_cast<SampleType>(parameters.gain.get()); 
-        cutoff = static_cast<SampleType>(parameters.cutoff.get()); 
-        q = static_cast<SampleType>(parameters.Q.get());
+
         realTimeCoeffsRequireUpdate.store(true);
 
         const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
@@ -163,10 +166,6 @@ private:
     void parameterGestureChanged (int, bool) override {}
 
 
-    FilterType filterType = FilterType::LowPass;
-    SampleType gain = 1.0f;
-    SampleType cutoff = 1000.0f;
-    SampleType q = 0.707f;
     SampleType sampleRate = 44100.0;
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<SampleType>, juce::dsp::IIR::Coefficients<SampleType>> filter;
     juce::dsp::IIR::Coefficients<SampleType> nonRealtimeCoeffs = *juce::dsp::IIR::Coefficients<SampleType>::makeLowPass(sampleRate, 100.0f);
@@ -174,35 +173,53 @@ private:
 
 };
 
-class FilterHandle : public juce::Component, private juce::AudioProcessorParameter::Listener
+class FilterHandle : public juce::Component, juce::AudioProcessorParameter::Listener
 {
 public:
     FilterHandle(juce::AudioProcessorEditor& editorIn, const FilterParameters& params) 
-        : cutoff(params.cutoff), 
-          Q(params.Q), 
-          gain(params.gain), 
+        :
+          Q(params.Q),
           type(params.type), 
-          editor(editorIn)
+          editor(editorIn),
+          cutoffAttachment(params.cutoff, [&](float newCutoff) {updateXFromNewCutoff(newCutoff);}),
+          gainAttachment(params.gain, [&](float newGain){updateYFromNewGain(newGain);}),
+          qAttachment(params.Q, [&](float newQ){updateYFromNewResonance(newQ);})
     {
         setSize(20, 20);
-        handleCutoff = cutoff.get(); 
-        handleQ = Q.get();
-        handleGain = gain.get(); 
         updateYisQ();
-
-        cutoff.addListener(this);
-        Q.addListener(this);
-        gain.addListener(this);
         type.addListener(this);
+
     }
 
-    ~FilterHandle() override 
+    ~FilterHandle() override
     {
-        cutoff.removeListener(this);
-        Q.removeListener(this);
-        gain.removeListener(this); 
-        type.removeListener(this);
+        type.removeListener(this); 
+    }
 
+    float getCurrentRelativeX()
+    {
+        return (float) getBoundsInParent().getCentreX() / (float) getParentWidth() ; 
+    }
+
+    float getCurrentRelativeY()
+    {
+        return (float) getBoundsInParent().getCentreY() / (float) getParentHeight(); 
+    }
+
+    void updateXFromNewCutoff(float newCutoff)
+    {
+        setCentreRelative(cutoffToRelativeX(newCutoff), getCurrentRelativeY()); 
+
+    }
+
+    void updateYFromNewResonance(float newQ)
+    {
+        setCentreRelative(getCurrentRelativeX(), QToNormalizedY(newQ));
+    }
+
+    void updateYFromNewGain(float newGain)
+    {
+        setCentreRelative(getCurrentRelativeX(),  1.0f - gainRange.convertTo0to1(newGain));
     }
 
     void paint(juce::Graphics& g) override
@@ -219,10 +236,6 @@ public:
         return juce::mapFromLog10(c, 20.0f, 20000.0f); 
     }
 
-    float XToCutoff(float x)
-    {
-        return juce::mapToLog10(x / (float) getParentWidth(), 20.0f, 20000.0f); 
-    }
 
     float normalizedYToNormalizedQ(float normY)
     {
@@ -233,11 +246,6 @@ public:
     {
         return 1.0f - Q.convertTo0to1(q); 
     }
-
-    // float normYToGain(float normY)
-    // {
-    //     auto properlyOrderedNormY =  1.0f - normY; //TODO 
-    // }
 
     bool isRightClick() const noexcept
     {
@@ -259,8 +267,7 @@ public:
 
                 void resized() override
                 {
-                    auto r = getLocalBounds();
-                    performLayout(r, filterType); 
+                    filterType.setBounds(getLocalBounds());
                 }
 
             private: 
@@ -269,9 +276,11 @@ public:
 
 
             auto filterControls = std::make_unique<FilterPropertyControls>(editor, type);
+            // auto r = getParentComponent()->getLocalBounds().toFloat(); 
+
             auto r = getParentComponent()->getLocalBounds().toFloat(); 
-            auto filterControlsWidth = 0.4 * r.getWidth();
-            auto filterControlsHeight = 0.4 * r.getHeight(); 
+            auto filterControlsWidth = 0.3 * r.getWidth();
+            auto filterControlsHeight = 0.3 * r.getHeight(); 
             filterControls->setSize((int) filterControlsWidth, (int) filterControlsHeight); 
             auto& calloutBox = juce::CallOutBox::launchAsynchronously (std::move (filterControls),
                                                 getBoundsInParent(),
@@ -281,11 +290,11 @@ public:
         }
 
         dragger.startDraggingComponent(this, e);
-        cutoff.beginChangeGesture();
+        cutoffAttachment.beginGesture();
 
-        if (YisQ)
-            Q.beginChangeGesture();
-        else gain.beginChangeGesture();
+        if (YisQ.load())
+            qAttachment.beginGesture();
+        else gainAttachment.beginGesture();
     }
 
     float addToCurrentQNormalized(float normalizedAmtToAdd)
@@ -293,53 +302,37 @@ public:
         return Q.convertTo0to1(Q.get()) + normalizedAmtToAdd; 
     }
 
-    float normalizedYToGain(float normalizedY)
+    void updateCutoffFromRelativeX(float relativeX)
     {
-        auto range = juce::NormalisableRange<float>(-10.0f, 10.0f, 0.0f);
-        return range.convertFrom0to1(1.0f - normalizedY);
+        auto correspondingCutoff = juce::mapToLog10(relativeX, 20.0f, 20000.0f); 
+        cutoffAttachment.setValueAsPartOfGesture(correspondingCutoff);
+    }
+
+    void updateGainFromRelativeY(float relativeY)
+    {
+        auto correspondingGain = gainRange.convertFrom0to1(1.0f - relativeY);
+        gainAttachment.setValueAsPartOfGesture(correspondingGain); 
+    }
+
+    void updateQFromRelativeY(float relativeY)
+    {
+        auto correspondingQ = Q.convertFrom0to1(1.0f - relativeY);
+        qAttachment.setValueAsPartOfGesture(correspondingQ);
     }
 
     void mouseDrag(const juce::MouseEvent& e) override
     {
+        dragger.dragComponent(this, e, nullptr);
 
-        auto x = getBoundsInParent().getCentre().toFloat().getX();
-        auto normalizedY = getBoundsInParent().getCentre().toFloat().getY() / (float) getParentHeight(); 
-        auto normalizedDragY = (float) e.getDistanceFromDragStartY() / (float) getParentHeight() ; 
+        auto centre = getBoundsInParent().getCentre().toFloat(); 
+        auto relativeX = centre.getX() / (float) getParentWidth() ; 
+        auto relativeY = centre.getY() / (float) getParentHeight() ; 
 
+        updateCutoffFromRelativeX(relativeX); 
 
-        if (YisQ)
-        {
-            dragger.dragComponent(this, e, nullptr);
+        if (YisQ.load()) updateQFromRelativeY(relativeY);
+        else updateGainFromRelativeY(relativeY);
 
-            auto correspondingCutoff = XToCutoff(x);
-            handleCutoff = correspondingCutoff; 
-            updateCutoff(correspondingCutoff);
-
-            auto correspondingQ = Q.convertFrom0to1(1.0f - normalizedY);
-            handleQ = correspondingQ; 
-            updateQ(correspondingQ);
-        }
-        else
-        {
-            if (isCommandDown())
-            {
-                auto correspondingQ = addToCurrentQNormalized(-normalizedDragY);
-                handleQ = correspondingQ; 
-                updateQ(correspondingQ);
-            }
-            else
-            {
-                dragger.dragComponent(this, e, nullptr);
-
-                auto correspondingCutoff = XToCutoff(x);
-                handleCutoff = correspondingCutoff; 
-                updateCutoff(correspondingCutoff);
-
-                auto correspondingGain = normalizedYToGain(normalizedY);
-                handleGain = correspondingGain; 
-                updateGain(correspondingGain);   
-            }
-        }
 
     }
 
@@ -350,270 +343,74 @@ public:
 
     void mouseUp(const juce::MouseEvent&) override 
     {
-        cutoff.endChangeGesture();
-        if (YisQ)
-            Q.endChangeGesture();
-        else gain.endChangeGesture();
-    }
-
-    void updateQ(float newQ)
-    {
-        Q.setValueNotifyingHost(Q.convertTo0to1(newQ));
-    }
-
-    void updateGain(float newGain)
-    {
-        gain.setValueNotifyingHost(gain.convertTo0to1(newGain));
-    }
-
-    void updateCutoff(float newCutoff)
-    {
-        cutoff.setValueNotifyingHost(cutoff.convertTo0to1(newCutoff));
-    }
-
-    void updateHandlePosition(float newCutoff, float newQ, float newGain)
-    {
-        auto x = cutoffToRelativeX(newCutoff); 
-        float y; 
-        if (YisQ)  y = QToNormalizedY(newQ);
-        
-        else y = 1.0f - gain.convertTo0to1(newGain);
-        
-        setCentreRelative(x, y);
-        handleCutoff = newCutoff; 
-        handleQ = newQ;
-        handleGain = newGain;
+        cutoffAttachment.endGesture();
+        if (YisQ.load())
+            qAttachment.endGesture();
+        else gainAttachment.endGesture();
     }
 
     void updateYisQ()
     {
         auto filterType = static_cast<FilterType> (type.getIndex()); 
         if(filterType == FilterType::LowPass || filterType == FilterType::HighPass || filterType == FilterType::BandPass || filterType == FilterType::Notch) 
-            YisQ = true; 
-        else YisQ = false; 
+            YisQ.store(true); 
+        else YisQ.store(false); 
     }
 
 private:
-    void parameterValueChanged(int parameterIndex, float) override
+
+    void parameterValueChanged(int, float) override
     {
-        if (parameterIndex == type.getParameterIndex()) 
-            updateYisQ();
-        else
-        {
-            auto newCutoff = cutoff.get(); 
-            auto newQ = Q.get(); 
-            auto newGain = gain.get();
-            // if ((! juce::approximatelyEqual(newCutoff, handleCutoff)) || (! juce::approximatelyEqual(newQ, handleQ) ) || (! juce::approximatelyEqual(newGain, handleGain)))
-                // updateHandlePosition(newCutoff, newQ, newGain);
-        }
+        updateYisQ();
     }
-    void parameterGestureChanged(int, bool) override 
+
+    void parameterGestureChanged(int, bool) override
     {
 
     }
+    std::atomic<bool> YisQ = false;  
 
-    bool YisQ = false;  
-    juce::ComponentDragger dragger;
-    float handleCutoff = 0.0f; 
-    float handleQ = 0.0f;
-    float handleGain = 0.0f;     
-    Parameter& cutoff; 
+    juce::ComponentDragger dragger; 
+
     Parameter& Q; 
-    Parameter& gain; 
     juce::AudioParameterChoice& type; 
     juce::AudioProcessorEditor& editor; 
 
+    juce::ParameterAttachment cutoffAttachment; 
+    juce::ParameterAttachment gainAttachment; 
+    juce::ParameterAttachment qAttachment; 
+
+    juce::NormalisableRange<float> gainRange = juce::NormalisableRange<float>(-10.0f, 10.0f, 0.0f);
     // FilterControls* listener = nullptr;
 };
 
-class MagnitudeResponseComponent : public juce::Component, private juce::ChangeListener, private juce::Timer
-{
-public:
-    MagnitudeResponseComponent(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f) 
-        : filter(f), handle(editorIn, f.parameters)
-    {
-        startTimer(20);
-        filter.addChangeListener(this);
-        addAndMakeVisible(handle);
-        // FilterHandle.updateHandlePosition();
-        // repaint();
-    }
-    
-    ~MagnitudeResponseComponent() override 
-    {
-        stopTimer();
-        filter.removeChangeListener(this);
-    }
-
-    void paint(juce::Graphics& g) override
-    {
-
-        g.fillAll(juce::Colours::black);
-
-        const auto bounds = getLocalBounds().toFloat();
-        const float width = bounds.getWidth();
-        const float height = bounds.getHeight();
-
-
-        
-        if (!plotPhase){
-            // Draw magnitude response
-            g.setColour(juce::Colours::white);
-            juce::Path magnitudePath;
-            bool pathStarted = false;
-
-            for (float x = 0; x < width; ++x)
-            {
-                float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
-                float magnitude = 0; 
-                auto pixelsPerDouble = height / juce::Decibels::decibelsToGain (10.0f);
-
-                magnitude = filter.getMagnitudeForFrequency(freq);
-                float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();
-                // float y = juce::jmap(magnitude, -40.0f, 40.0f, height, 0.0f);
-
-                if (!pathStarted)
-                {
-                    magnitudePath.startNewSubPath(x, y);
-                    pathStarted = true;
-                }
-                else
-                {
-                    magnitudePath.lineTo(x, y);
-                }
-            }
-
-            g.strokePath(magnitudePath, juce::PathStrokeType(2.0f));
-        }
-
-        else {
-            // Draw phase response
-            g.setColour(juce::Colours::yellow);
-            juce::Path phasePath;
-            bool pathStarted = false;
-
-            for (float x = 0; x < width; ++x)
-            {
-                float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
-                float phase = filter.getPhaseForFrequency(freq);
-                float y = juce::jmap(phase, -juce::MathConstants<float>::pi, juce::MathConstants<float>::pi, height, 0.0f);
-
-                if (!pathStarted)
-                {
-                    phasePath.startNewSubPath(x, y);
-                    pathStarted = true;
-                }
-                else
-                {
-                    phasePath.lineTo(x, y);
-                }
-            }
-
-            g.strokePath(phasePath, juce::PathStrokeType(2.0f));
-        }
-    
-
-        auto plotFrame = getLocalBounds().toFloat();
-
-
-        filter.postAnalyzer.createPath(analyzerPath, plotFrame, 20.0f);
-        g.setColour (juce::Colours::grey);
-        // g.drawFittedText ("Output", plotFrame.reduced (8, 28), juce::Justification::topRight, 1);
-
-        g.strokePath (analyzerPath, juce::PathStrokeType (1.0));
-    
-    }
-
-
-    void resized() override
-    {
-        repaint();
-    }
 
 
 
-private:
-
-
-    void changeListenerCallback(juce::ChangeBroadcaster * ) override
-    {
-        repaint();
-    }
-
-    void timerCallback() override
-    {
-        if (filter.postAnalyzer.checkForNewData()) 
-            repaint(); 
-    }
-
-    StereoIIRFilter& filter;
-    juce::Path analyzerPath; 
-    bool plotPhase = false; 
-    FilterHandle handle; 
-
-};
-
-class FilterResponseComponent : public juce::Component 
-{
-public: 
-    FilterResponseComponent(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f): magnitudeResponseComponent(editorIn, f)// , phaseResponseComponent(f) 
-    {
-        addAndMakeVisible(magnitudeResponseComponent);
-        // addAndMakeVisible(phaseResponseComponent);
-    }
-
-    void resized() override 
-    {
-        auto bounds = getLocalBounds();
-        magnitudeResponseComponent.setBounds(bounds);
-        // phaseResponseComponent.setBounds(bounds);
-        repaint();
-    }
-
-private: 
-    MagnitudeResponseComponent magnitudeResponseComponent; 
-    // PhaseResponseComponent phaseResponseComponent; 
-
-    
-}; 
-
-struct FilterControls: public juce::Component
-{
-    FilterControls(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f) 
-        : filterResponse(editorIn, f),
-          filterTypeSelector(editorIn, f.parameters.type),
-          filterGain(editorIn, f.parameters.gain),
-          filterCutoff(editorIn, f.parameters.cutoff),
-          filterQ(editorIn, f.parameters.Q)
-    { 
-        addAllAndMakeVisible(*this, 
-                filterResponse, 
-                filterTypeSelector, 
-                filterGain, 
-                filterCutoff, 
-                filterQ);
-    }
+// struct FilterControls: public juce::Component
+// {
+//     FilterControls(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f) 
+//         : filterResponse(editorIn, f)
+//     { 
+//         addAllAndMakeVisible(*this, 
+//                 filterResponse);
+//     }
           
-    ~FilterControls() override
-    {
-        // FilterHandle.removeListener();
-    }
+//     ~FilterControls() override
+//     {
+//         // FilterHandle.removeListener();
+//     }
 
-    void resized() override 
-    {
-        auto r = getLocalBounds();
-        auto responseArea = r.removeFromTop((int) (0.6 * getHeight())); 
-        filterResponse.setBounds(responseArea);
-        performLayout(r, filterTypeSelector, filterCutoff, filterQ, filterGain);
-        // updateHandlePosition();
-    }
+//     void resized() override 
+//     {
+//         auto r = getLocalBounds();
+//         // auto responseArea = r.removeFromTop((int) (0.6 * getHeight())); 
+//         filterResponse.setBounds(r);
+//         // updateHandlePosition();
+//     }
 
-private: 
-    FilterResponseComponent filterResponse; 
-    AttachedCombo filterTypeSelector; 
-    AttachedSlider filterGain; 
-    AttachedSlider filterCutoff; 
-    AttachedSlider filterQ; 
+// private: 
+//     MagnitudeResponseComponent filterResponse; 
 
 
-};
+// };

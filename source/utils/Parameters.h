@@ -1,5 +1,6 @@
 #pragma once 
 #include "./Misc.h"
+#include "Parameters.h"
 
 
 template <typename Param>
@@ -48,13 +49,20 @@ namespace ID
     PARAMETER_ID (compressorRatio)
     PARAMETER_ID (compressorAttack)
     PARAMETER_ID (compressorRelease)
-    PARAMETER_ID (filterCutoff)
-    PARAMETER_ID (filterQ)
-    PARAMETER_ID (filterGain)
-    PARAMETER_ID (filterType)
+
+    PARAMETER_ID (eqFilterCutoff0)
+    PARAMETER_ID (eqFilterQ0)
+    PARAMETER_ID (eqFilterGain0)
+    PARAMETER_ID (eqFilterType0)
+    PARAMETER_ID (eqFilterCutoff1)
+    PARAMETER_ID (eqFilterQ1)
+    PARAMETER_ID (eqFilterGain1)
+    PARAMETER_ID (eqFilterType1)
     #undef PARAMETER_ID
 
 }
+
+
 
 
 using Parameter = juce::AudioProcessorValueTreeState::Parameter; 
@@ -193,6 +201,7 @@ struct NeuralParameters
 };
 
 
+
 struct FilterParameters
 {
 
@@ -201,26 +210,26 @@ struct FilterParameters
 
 
     template <typename T>
-    explicit FilterParameters (T& layout) 
+    explicit FilterParameters (T& layout, std::vector<const char *> parameterIDs) 
         : type (addToLayout<juce::AudioParameterChoice> (layout,
-                                                    juce::ParameterID { ID::filterType, 1 },
+                                                    juce::ParameterID { parameterIDs[0], 1 },
                                                     "Filter Type",
                                                     filterTypes,
                                                     0)),
             gain (addToLayout<Parameter> (layout,
-                                            juce::ParameterID { ID::filterGain, 1 },
+                                            juce::ParameterID { parameterIDs[1], 1 },
                                             "Filter Gain",
                                             juce::NormalisableRange<float> (-10.0f, 10.0f),
                                             0.0f,
                                             getDbAttributes())),
             cutoff (addToLayout<Parameter> (layout,
-                                            juce::ParameterID { ID::filterCutoff, 1 },
+                                            juce::ParameterID { parameterIDs[2], 1 },
                                             "Filter Cutoff",
                                             juce::NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
                                             100.0f,
                                             getHzAttributes())),
             Q (addToLayout<Parameter> (layout,
-                                            juce::ParameterID { ID::filterQ, 1 },
+                                            juce::ParameterID { parameterIDs[3], 1 },
                                             "Filter Resonance",
                                             juce::NormalisableRange<float> (0.1f, 5.0f, 0.0f, 0.25f),
                                             0.7f))                                   {}
@@ -232,15 +241,42 @@ struct FilterParameters
 };
 
 
+struct EQParameters
+{
+    static auto getFilterParamID(int filterNb) noexcept
+    {
+        
+        switch (filterNb){
+            case 0: return std::vector<const char *> {ID::eqFilterType0, ID::eqFilterGain0, ID::eqFilterCutoff0, ID::eqFilterQ0}; 
+            case 1: return std::vector<const char *> {ID::eqFilterType1, ID::eqFilterGain1, ID::eqFilterCutoff1, ID::eqFilterQ1}; 
+            // default : std::vector<const char *> {ID::eqFilterType0, ID::eqFilterGain0, ID::eqFilterCutoff0, ID::eqFilterQ0}; 
+        }
+
+    }
+
+
+    template <typename T>
+    explicit EQParameters(T& layout) 
+        : filter0(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter0",    "EQ Filter 0",    "|"), getFilterParamID(0)), 
+          filter1(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter1",    "EQ Filter 1",    "|"), getFilterParamID(1)) {}
+
+    FilterParameters filter0; 
+    FilterParameters filter1; 
+};
+
+
+
+
+
 struct PostProcessorParameters
 {
     template <typename T>
     explicit PostProcessorParameters(T& layout)
         : compressor(addToLayout<juce::AudioProcessorParameterGroup> (layout, "compressor",    "Compressor",    "|")),
-          filter(addToLayout<juce::AudioProcessorParameterGroup>(layout, "filter",    "Filter",    "|")) {}
+          eq(addToLayout<juce::AudioProcessorParameterGroup>(layout, "eq",    "EQ",    "|")) {}
 
     CompressorParameters compressor; 
-    FilterParameters filter;
+    EQParameters eq;
 
 }; 
 
