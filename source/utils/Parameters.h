@@ -210,12 +210,12 @@ struct FilterParameters
 
 
     template <typename T>
-    explicit FilterParameters (T& layout, std::vector<const char *> parameterIDs) 
+    explicit FilterParameters (T& layout, std::vector<const char *> parameterIDs, float startFreq) 
         : type (addToLayout<juce::AudioParameterChoice> (layout,
                                                     juce::ParameterID { parameterIDs[0], 1 },
                                                     "Filter Type",
                                                     filterTypes,
-                                                    0)),
+                                                    7)),
             gain (addToLayout<Parameter> (layout,
                                             juce::ParameterID { parameterIDs[1], 1 },
                                             "Filter Gain",
@@ -226,7 +226,7 @@ struct FilterParameters
                                             juce::ParameterID { parameterIDs[2], 1 },
                                             "Filter Cutoff",
                                             juce::NormalisableRange<float> (20.0f, 22000.0f, 0.0f, 0.25f),
-                                            100.0f,
+                                            startFreq,
                                             getHzAttributes())),
             Q (addToLayout<Parameter> (layout,
                                             juce::ParameterID { parameterIDs[3], 1 },
@@ -243,6 +243,11 @@ struct FilterParameters
 
 struct EQParameters
 {
+
+    static auto getStartFreq(int filterNb, int numFilters)
+    {
+        return 20.0f + juce::mapToLog10(((float) (filterNb + 1)) /  (float) numFilters, 20.0f, 20000.0f); 
+    }
     static auto getFilterParamID(int filterNb) noexcept
     {
         
@@ -257,8 +262,8 @@ struct EQParameters
 
     template <typename T>
     explicit EQParameters(T& layout) 
-        : filter0(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter0",    "EQ Filter 0",    "|"), getFilterParamID(0)), 
-          filter1(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter1",    "EQ Filter 1",    "|"), getFilterParamID(1)) {}
+        : filter0(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter0",    "EQ Filter 0",    "|"), getFilterParamID(0), getStartFreq(0, 2)), 
+          filter1(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter1",    "EQ Filter 1",    "|"), getFilterParamID(1), getStartFreq(1, 2)) {}
 
     FilterParameters filter0; 
     FilterParameters filter1; 

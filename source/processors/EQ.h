@@ -68,11 +68,16 @@ class EQControls : public juce::Component, private juce::ChangeListener, private
 public:
     EQControls(juce::AudioProcessorEditor& editorIn, EQ& eqIn) 
         : eq(eqIn), 
-          handle(editorIn, *eq.filterChain.get<0>().parameters)
+          handle0(editorIn, *eq.filterChain.get<0>().parameters),
+          handle1(editorIn, *eq.filterChain.get<1>().parameters)
     {
         startTimer(20);
         eq.filterChain.get<0>().addChangeListener(this);
-        addAndMakeVisible(handle);
+        eq.filterChain.get<1>().addChangeListener(this);
+
+        addAndMakeVisible(handle0);
+        addAndMakeVisible(handle1);
+
         // FilterHandle.updateHandlePosition();
         // repaint();
     }
@@ -81,6 +86,8 @@ public:
     {
         stopTimer();
         eq.filterChain.get<0>().removeChangeListener(this);
+        eq.filterChain.get<1>().removeChangeListener(this);
+
     }
 
     void paint(juce::Graphics& g) override
@@ -101,10 +108,13 @@ public:
         for (float x = 0; x < width; ++x)
         {
             float freq = juce::mapToLog10(x / width, 20.0f, 20000.0f);
-            float magnitude = 0; 
+            float magnitude = 1.0f; 
             auto pixelsPerDouble = height / juce::Decibels::decibelsToGain (10.0f);
 
-            magnitude = eq.filterChain.get<0>().getMagnitudeForFrequency(freq);
+
+            magnitude *= eq.filterChain.get<0>().getMagnitudeForFrequency(freq);
+            magnitude *= eq.filterChain.get<1>().getMagnitudeForFrequency(freq);
+
             float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();
             // float y = juce::jmap(magnitude, -40.0f, 40.0f, height, 0.0f);
 
@@ -156,6 +166,7 @@ private:
     EQ& eq;
 
     juce::Path analyzerPath; 
-    FilterHandle handle; 
+    FilterHandle handle0;
+    FilterHandle handle1;  
 
 };
