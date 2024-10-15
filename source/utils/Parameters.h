@@ -54,10 +54,16 @@ namespace ID
     PARAMETER_ID (eqFilterQ0)
     PARAMETER_ID (eqFilterGain0)
     PARAMETER_ID (eqFilterType0)
+    
     PARAMETER_ID (eqFilterCutoff1)
     PARAMETER_ID (eqFilterQ1)
     PARAMETER_ID (eqFilterGain1)
     PARAMETER_ID (eqFilterType1)
+
+    PARAMETER_ID (eqFilterCutoff2)
+    PARAMETER_ID (eqFilterQ2)
+    PARAMETER_ID (eqFilterGain2)
+    PARAMETER_ID (eqFilterType2)
     #undef PARAMETER_ID
 
 }
@@ -254,6 +260,8 @@ struct EQParameters
         switch (filterNb){
             case 0: return std::vector<const char *> {ID::eqFilterType0, ID::eqFilterGain0, ID::eqFilterCutoff0, ID::eqFilterQ0}; 
             case 1: return std::vector<const char *> {ID::eqFilterType1, ID::eqFilterGain1, ID::eqFilterCutoff1, ID::eqFilterQ1}; 
+            case 2: return std::vector<const char *> {ID::eqFilterType2, ID::eqFilterGain2, ID::eqFilterCutoff2, ID::eqFilterQ2}; 
+
             // default : std::vector<const char *> {ID::eqFilterType0, ID::eqFilterGain0, ID::eqFilterCutoff0, ID::eqFilterQ0}; 
         }
 
@@ -262,11 +270,15 @@ struct EQParameters
 
     template <typename T>
     explicit EQParameters(T& layout) 
-        : filter0(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter0",    "EQ Filter 0",    "|"), getFilterParamID(0), getStartFreq(0, 2)), 
-          filter1(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter1",    "EQ Filter 1",    "|"), getFilterParamID(1), getStartFreq(1, 2)) {}
+        : filter0(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter0",    "EQ Filter 0",    "|"), getFilterParamID(0), getStartFreq(0, 3)), 
+          filter1(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter1",    "EQ Filter 1",    "|"), getFilterParamID(1), getStartFreq(1, 3)),
+          filter2(addToLayout<juce::AudioProcessorParameterGroup> (layout, "eqFilter2",    "EQ Filter 2",    "|"), getFilterParamID(2), getStartFreq(2, 3)) {}
+ 
 
     FilterParameters filter0; 
     FilterParameters filter1; 
+    FilterParameters filter2; 
+
 };
 
 

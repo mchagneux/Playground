@@ -181,13 +181,23 @@ public:
           Q(params.Q),
           type(params.type), 
           editor(editorIn),
-          cutoffAttachment(params.cutoff, [&](float newCutoff) {updateXFromNewCutoff(newCutoff);}),
-          gainAttachment(params.gain, [&](float newGain){updateYFromNewGain(newGain);}),
-          qAttachment(params.Q, [&](float newQ){updateYFromNewResonance(newQ);})
+          cutoffAttachment(params.cutoff, [&](float newCutoff) {updateXFromNewCutoff(newCutoff); repaint();}),
+          gainAttachment(params.gain, [&](float newGain){updateYFromNewGain(newGain); repaint();}),
+          qAttachment(params.Q, [&](float newQ){updateYFromNewResonance(newQ); repaint();})
     {
         setSize(20, 20);
-        updateYisQ();
         type.addListener(this);
+
+        updateYisQ();
+
+
+        if (YisQ.load()){
+            setCentreRelative(cutoffToRelativeX(params.cutoff.get()), QToNormalizedY(params.Q.get()));
+        }
+        else
+        {
+            setCentreRelative(cutoffToRelativeX(params.cutoff.get()), 1.0f - gainRange.convertTo0to1(params.gain.get()));
+        }
 
     }
 
@@ -198,7 +208,7 @@ public:
 
     float getCurrentRelativeX()
     {
-        return (float) getBoundsInParent().getCentreX() / (float) getParentWidth() ; 
+        return (float) getBoundsInParent().getCentreX() / (float) getParentWidth();
     }
 
     float getCurrentRelativeY()
@@ -214,7 +224,8 @@ public:
 
     void updateYFromNewResonance(float newQ)
     {
-        setCentreRelative(getCurrentRelativeX(), QToNormalizedY(newQ));
+        if (YisQ.load())
+            setCentreRelative(getCurrentRelativeX(), QToNormalizedY(newQ));
     }
 
     void updateYFromNewGain(float newGain)
@@ -259,28 +270,46 @@ public:
             struct FilterPropertyControls : public juce::Component
             {
             public:
-                FilterPropertyControls(juce::AudioProcessorEditor& editorIn, juce::AudioParameterChoice& typeParam)
-                    : filterType(editorIn, typeParam)
+                FilterPropertyControls(juce::AudioProcessorEditor& editorIn, 
+                                     juce::AudioParameterChoice& typeParam,
+                                     Parameter& qParam)
+                    : filterType(editorIn, typeParam), 
+                      filterQ(editorIn, qParam)
                 {
                     addAndMakeVisible(filterType);
+                    if (static_cast<FilterType>(typeParam.getIndex()) == FilterType::PeakFilter) 
+                    {
+                        isBell = true;
+                        addAndMakeVisible(filterQ);
+                        resized();
+                    }
                 }
 
                 void resized() override
                 {
+                    if (isBell)
+                    {
+                        auto r = getLocalBounds(); 
+                        filterType.setBounds(r.removeFromTop((int) getHeight() / 2)); 
+                        filterQ.setBounds(r); 
+                    }
                     filterType.setBounds(getLocalBounds());
+
                 }
 
             private: 
+                bool isBell = false;
                 AttachedCombo filterType;
+                AttachedSlider filterQ; 
             };
 
 
-            auto filterControls = std::make_unique<FilterPropertyControls>(editor, type);
+            auto filterControls = std::make_unique<FilterPropertyControls>(editor, type, Q);
             // auto r = getParentComponent()->getLocalBounds().toFloat(); 
 
             auto r = getParentComponent()->getLocalBounds().toFloat(); 
-            auto filterControlsWidth = 0.3 * r.getWidth();
-            auto filterControlsHeight = 0.3 * r.getHeight(); 
+            auto filterControlsWidth = 0.4 * r.getWidth();
+            auto filterControlsHeight = 0.4 * r.getHeight(); 
             filterControls->setSize((int) filterControlsWidth, (int) filterControlsHeight); 
             auto& calloutBox = juce::CallOutBox::launchAsynchronously (std::move (filterControls),
                                                 getBoundsInParent(),
@@ -333,7 +362,13 @@ public:
         if (YisQ.load()) updateQFromRelativeY(relativeY);
         else updateGainFromRelativeY(relativeY);
 
+    }
 
+    void sendInitialUpdates()
+    {
+        cutoffAttachment.sendInitialUpdate();
+        gainAttachment.sendInitialUpdate();
+        qAttachment.sendInitialUpdate();
     }
 
     bool isCommandDown()

@@ -8,12 +8,13 @@
 
 
 
-using FilterChain = juce::dsp::ProcessorChain<StereoIIRFilter, StereoIIRFilter>;
+using FilterChain = juce::dsp::ProcessorChain<StereoIIRFilter, StereoIIRFilter, StereoIIRFilter>;
 
 enum filterIDs 
 {
     filter0,
-    filter1
+    filter1,
+    filter2
 };
 
 
@@ -26,6 +27,9 @@ public:
     {
         filterChain.get<filter0>().connectToParameters(parameterRefs.filter0); 
         filterChain.get<filter1>().connectToParameters(parameterRefs.filter1); 
+        filterChain.get<filter2>().connectToParameters(parameterRefs.filter2); 
+        
+
     }
 
     ~EQ()
@@ -69,17 +73,26 @@ public:
     EQControls(juce::AudioProcessorEditor& editorIn, EQ& eqIn) 
         : eq(eqIn), 
           handle0(editorIn, *eq.filterChain.get<0>().parameters),
-          handle1(editorIn, *eq.filterChain.get<1>().parameters)
+          handle1(editorIn, *eq.filterChain.get<1>().parameters),
+          handle2(editorIn, *eq.filterChain.get<2>().parameters)
+
     {
         startTimer(20);
         eq.filterChain.get<0>().addChangeListener(this);
         eq.filterChain.get<1>().addChangeListener(this);
+        eq.filterChain.get<2>().addChangeListener(this);
+
 
         addAndMakeVisible(handle0);
         addAndMakeVisible(handle1);
+        addAndMakeVisible(handle2);
+
+        handle0.sendInitialUpdates();
+        handle1.sendInitialUpdates();
+        handle2.sendInitialUpdates();
 
         // FilterHandle.updateHandlePosition();
-        // repaint();
+        repaint();
     }
     
     ~EQControls() override 
@@ -87,6 +100,7 @@ public:
         stopTimer();
         eq.filterChain.get<0>().removeChangeListener(this);
         eq.filterChain.get<1>().removeChangeListener(this);
+        eq.filterChain.get<2>().removeChangeListener(this);
 
     }
 
@@ -114,6 +128,7 @@ public:
 
             magnitude *= eq.filterChain.get<0>().getMagnitudeForFrequency(freq);
             magnitude *= eq.filterChain.get<1>().getMagnitudeForFrequency(freq);
+            magnitude *= eq.filterChain.get<2>().getMagnitudeForFrequency(freq);
 
             float y = magnitude > 0 ? (float) (bounds.getCentreY() - pixelsPerDouble * std::log (magnitude) / std::log (2.0)) : bounds.getBottom();
             // float y = juce::jmap(magnitude, -40.0f, 40.0f, height, 0.0f);
@@ -168,5 +183,7 @@ private:
     juce::Path analyzerPath; 
     FilterHandle handle0;
     FilterHandle handle1;  
+    FilterHandle handle2;  
+
 
 };
