@@ -13,11 +13,16 @@
 class MainProcessor final : public juce::AudioProcessor
 {
 public:
-
-    using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
+    using AudioGraphIOProcessor =
+        juce::AudioProcessorGraph::AudioGraphIOProcessor;
     using Node = juce::AudioProcessorGraph::Node;
+
     //==============================================================================
-    MainProcessor(): MainProcessor(juce::AudioProcessorValueTreeState::ParameterLayout {}) {}
+    MainProcessor()
+        : MainProcessor (juce::AudioProcessorValueTreeState::ParameterLayout {})
+    {
+    }
+
     ~MainProcessor() override;
 
     //==============================================================================
@@ -52,55 +57,56 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    JITLoaderPlugin& getCmajorProcessor(){
-        return *cmajorJITLoaderPlugin;
-        // return static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor()); 
-    }
-
-    auto& getPostProcessor()
+    JITLoaderPlugin& getCmajorProcessor()
     {
-        return postProcessor; 
+        return *cmajorJITLoaderPlugin;
+        // return
+        // static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor());
     }
 
+    auto& getPostProcessor() { return postProcessor; }
 
-    BusesProperties getBusesProperties() 
+    BusesProperties getBusesProperties()
     {
         return BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                    ;
+#if ! JucePlugin_IsMidiEffect
+#if ! JucePlugin_IsSynth
+            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
+#endif
+            .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+#endif
+            ;
     }
 
-
-    Parameters parameters; 
+    Parameters parameters;
 
 private:
-
-    explicit MainProcessor(juce::AudioProcessorValueTreeState::ParameterLayout layout)
-        : AudioProcessor (getBusesProperties()), 
-        parameters(layout),
-        apvts(*this, nullptr, "Plugin", std::move(layout)),
-        postProcessor(parameters.postProcessor),
-        neuralProcessor(parameters.neural)
+    explicit MainProcessor (
+        juce::AudioProcessorValueTreeState::ParameterLayout layout)
+        : AudioProcessor (getBusesProperties())
+        , parameters (layout)
+        , apvts (*this, nullptr, "Plugin", std::move (layout))
+        , postProcessor (parameters.postProcessor)
+        , neuralProcessor (parameters.neural)
     {
         auto patch = std::make_shared<cmaj::Patch>();
         patch->setAutoRebuildOnFileChange (true);
-        patch->createEngine = +[] { return cmaj::Engine::create(); };
-        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin>(patch); 
-        cmajorJITLoaderPlugin->loadPatch("E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
+        patch->createEngine = +[]
+        {
+            return cmaj::Engine::create();
+        };
+        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin> (patch);
+        cmajorJITLoaderPlugin->loadPatch (
+            "E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
     }
 
-    juce::AudioProcessorValueTreeState apvts; 
+    juce::AudioProcessorValueTreeState apvts;
 
-    PostProcessor postProcessor; 
-    NeuralProcessor neuralProcessor; 
+    PostProcessor postProcessor;
+    NeuralProcessor neuralProcessor;
 
     // std::unique_ptr<CmajorProcessor> cmajorProcessor;
-    std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin; 
+    std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin;
     // std::unique_ptr<NeuralProcessor> neuralProcessor;
     // std::unique_ptr<AudioProcessorGraph> mainProcessor;
     //==============================================================================

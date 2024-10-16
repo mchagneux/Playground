@@ -1,42 +1,47 @@
-#pragma once 
-#include <JuceHeader.h>
+#pragma once
 #include "./Misc.h"
-
-
+#include <JuceHeader.h>
 
 template <typename... Components>
 void addAllAndMakeVisible (juce::Component& target, Components&... children)
 {
-    forEach ([&] (juce::Component& child) { target.addAndMakeVisible (child); }, children...);
+    forEach ([&] (juce::Component& child)
+             {
+                 target.addAndMakeVisible (child);
+             },
+             children...);
 }
-
 
 class ComponentWithParamMenu : public juce::Component
 {
 public:
-    ComponentWithParamMenu (juce::AudioProcessorEditor& editorIn, juce::RangedAudioParameter& paramIn)
-        : editor (editorIn), param (paramIn) {}
+    ComponentWithParamMenu (juce::AudioProcessorEditor& editorIn,
+                            juce::RangedAudioParameter& paramIn)
+        : editor (editorIn)
+        , param (paramIn)
+    {
+    }
 
     void mouseUp (const juce::MouseEvent& e) override
     {
         if (e.mods.isRightButtonDown())
-            if (auto * c = editor.getHostContext())
+            if (auto* c = editor.getHostContext())
                 if (auto menuInfo = c->getContextMenuForParameter (&param))
-                    menuInfo->getEquivalentPopupMenu().showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent (this)
-                                                                                            .withMousePosition());
+                    menuInfo->getEquivalentPopupMenu().showMenuAsync (
+                        juce::PopupMenu::Options {}
+                            .withTargetComponent (this)
+                            .withMousePosition());
     }
 
-    int getParameterIndex() const
-    {
-        return param.getParameterIndex();
-    }
+    int getParameterIndex() const { return param.getParameterIndex(); }
 
 private:
     juce::AudioProcessorEditor& editor;
     juce::RangedAudioParameter& param;
 };
 
-static inline ComponentWithParamMenu * findParentComponentWithParamMenu (juce::Component * c)
+static inline ComponentWithParamMenu*
+    findParentComponentWithParamMenu (juce::Component* c)
 {
     if (c == nullptr)
         return nullptr;
@@ -50,10 +55,11 @@ static inline ComponentWithParamMenu * findParentComponentWithParamMenu (juce::C
 class AttachedSlider final : public ComponentWithParamMenu
 {
 public:
-    AttachedSlider (juce::AudioProcessorEditor& editorIn, juce::RangedAudioParameter& paramIn)
-        : ComponentWithParamMenu (editorIn, paramIn),
-            label ("", paramIn.name),
-            attachment (paramIn, slider)
+    AttachedSlider (juce::AudioProcessorEditor& editorIn,
+                    juce::RangedAudioParameter& paramIn)
+        : ComponentWithParamMenu (editorIn, paramIn)
+        , label ("", paramIn.name)
+        , attachment (paramIn, slider)
     {
         slider.addMouseListener (this, true);
 
@@ -68,7 +74,8 @@ public:
     void resized() override { slider.setBounds (getLocalBounds().reduced (0, 40)); }
 
 private:
-    juce::Slider slider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxBelow };
+    juce::Slider slider { juce::Slider::LinearHorizontal,
+                          juce::Slider::TextBoxBelow };
     juce::Label label;
     juce::SliderParameterAttachment attachment;
 };
@@ -76,10 +83,11 @@ private:
 class AttachedToggle final : public ComponentWithParamMenu
 {
 public:
-    AttachedToggle (juce::AudioProcessorEditor& editorIn, juce::RangedAudioParameter& paramIn)
-        : ComponentWithParamMenu (editorIn, paramIn),
-            toggle (paramIn.name),
-            attachment (paramIn, toggle)
+    AttachedToggle (juce::AudioProcessorEditor& editorIn,
+                    juce::RangedAudioParameter& paramIn)
+        : ComponentWithParamMenu (editorIn, paramIn)
+        , toggle (paramIn.name)
+        , attachment (paramIn, toggle)
     {
         toggle.addMouseListener (this, true);
         addAndMakeVisible (toggle);
@@ -95,11 +103,12 @@ private:
 class AttachedCombo final : public ComponentWithParamMenu
 {
 public:
-    AttachedCombo (juce::AudioProcessorEditor& editorIn, juce::RangedAudioParameter& paramIn)
-        : ComponentWithParamMenu (editorIn, paramIn),
-            combo (paramIn),
-            label ("", paramIn.name),
-            attachment (paramIn, combo)
+    AttachedCombo (juce::AudioProcessorEditor& editorIn,
+                   juce::RangedAudioParameter& paramIn)
+        : ComponentWithParamMenu (editorIn, paramIn)
+        , combo (paramIn)
+        , label ("", paramIn.name)
+        , attachment (paramIn, combo)
     {
         combo.addMouseListener (this, true);
 
@@ -111,7 +120,8 @@ public:
 
     void resized() override
     {
-        combo.setBounds (getLocalBounds().withSizeKeepingCentre (juce::jmin (getWidth(), 150), 24));
+        combo.setBounds (getLocalBounds().withSizeKeepingCentre (
+            juce::jmin (getWidth(), 150), 24));
     }
 
 private:
@@ -130,35 +140,42 @@ private:
     juce::ComboBoxParameterAttachment attachment;
 };
 
-
 struct GetTrackInfo
 {
-    
     // Combo boxes need a lot of room
-    juce::Grid::TrackInfo operator() (AttachedCombo&)             const { return juce::Grid::Px(120); }
+    juce::Grid::TrackInfo operator() (AttachedCombo&) const
+    {
+        return juce::Grid::Px (120);
+    }
 
     // Toggles are a bit smaller
-    juce::Grid::TrackInfo operator() (AttachedToggle&)            const { return juce::Grid::Px(80); }
+    juce::Grid::TrackInfo operator() (AttachedToggle&) const
+    {
+        return juce::Grid::Px (80);
+    }
 
     // Sliders take up as much room as they can
-    juce::Grid::TrackInfo operator() (AttachedSlider&)            const { return juce::Grid::Fr(1); }
+    juce::Grid::TrackInfo operator() (AttachedSlider&) const
+    {
+        return juce::Grid::Fr (1);
+    }
 };
 
-
 template <typename... Components>
-static void performLayout (const juce::Rectangle<int>& bounds, Components&... components)
+static void performLayout (const juce::Rectangle<int>& bounds,
+                           Components&... components)
 {
     juce::Grid grid;
     using Track = juce::Grid::TrackInfo;
 
-    grid.autoColumns     = Track (juce::Grid::Fr(1));
-    grid.autoRows        = Track (juce::Grid::Fr(1));
-    grid.columnGap       = juce::Grid::Px (10);
-    grid.rowGap          = juce::Grid::Px (0);
-    grid.autoFlow        = juce::Grid::AutoFlow::column;
+    grid.autoColumns = Track (juce::Grid::Fr (1));
+    grid.autoRows = Track (juce::Grid::Fr (1));
+    grid.columnGap = juce::Grid::Px (10);
+    grid.rowGap = juce::Grid::Px (0);
+    grid.autoFlow = juce::Grid::AutoFlow::column;
 
-    grid.templateColumns = { GetTrackInfo{} (components)... };
-    grid.items           = { juce::GridItem (components)... };
+    grid.templateColumns = { GetTrackInfo {}(components)... };
+    grid.items = { juce::GridItem (components)... };
 
     grid.performLayout (bounds);
 }

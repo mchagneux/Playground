@@ -1,26 +1,24 @@
-#pragma once 
+#pragma once
 
 #include <JuceHeader.h>
 #include "../utils/Misc.h"
 #include "../utils/Components.h"
 #include "../utils/Parameters.h"
 
-
-
-
 using Parameter = juce::AudioProcessorValueTreeState::Parameter;
-
 
 struct DistortionProcessor
 {
-
     DistortionProcessor()
     {
-        forEach ([] (juce::dsp::Gain<float>& gain) { gain.setRampDurationSeconds (0.05); },
-                    distGain,
-                    compGain);
+        forEach ([] (juce::dsp::Gain<float>& gain)
+                 {
+                     gain.setRampDurationSeconds (0.05);
+                 },
+                 distGain,
+                 compGain);
 
-        lowpass.setType  (juce::dsp::FirstOrderTPTFilterType::lowpass);
+        lowpass.setType (juce::dsp::FirstOrderTPTFilterType::lowpass);
         highpass.setType (juce::dsp::FirstOrderTPTFilterType::highpass);
         mixer.setMixingRule (juce::dsp::DryWetMixingRule::linear);
     }
@@ -82,8 +80,7 @@ struct DistortionProcessor
         mixer.mixWetSamples (outputBlock);
     }
 
-    std::array<juce::dsp::Oversampling<float>, 6> oversamplers
-    { {
+    std::array<juce::dsp::Oversampling<float>, 6> oversamplers { {
         { 2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false },
         { 2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false },
         { 2, 3, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false },
@@ -99,26 +96,24 @@ struct DistortionProcessor
     juce::dsp::Gain<float> distGain, compGain;
     juce::dsp::DryWetMixer<float> mixer { 10 };
     std::array<juce::dsp::WaveShaper<float>, 2> waveShapers { { { std::tanh },
-                                                            { juce::dsp::FastMathApproximations::tanh } } };
+                                                                { juce::dsp::FastMathApproximations::tanh } } };
     juce::dsp::WaveShaper<float> clipping { clip };
     int currentIndexOversampling = 0;
-    int currentIndexWaveshaper   = 0;
-
+    int currentIndexWaveshaper = 0;
 };
 
 struct DistortionControls final : public juce::Component
 {
-
     explicit DistortionControls (juce::AudioProcessorEditor& editor,
-                                    const DistortionParameters& state)
-        : toggle       (editor, state.enabled),
-            lowpass      (editor, state.lowpass),
-            highpass     (editor, state.highpass),
-            mix          (editor, state.mix),
-            gain         (editor, state.inGain),
-            compv        (editor, state.compGain),
-            type         (editor, state.type),
-            oversampling (editor, state.oversampler)
+                                 const DistortionParameters& state)
+        : toggle (editor, state.enabled)
+        , lowpass (editor, state.lowpass)
+        , highpass (editor, state.highpass)
+        , mix (editor, state.mix)
+        , gain (editor, state.inGain)
+        , compv (editor, state.compGain)
+        , type (editor, state.type)
+        , oversampling (editor, state.oversampler)
     {
         addAllAndMakeVisible (*this, toggle, type, lowpass, highpass, mix, gain, compv, oversampling);
     }

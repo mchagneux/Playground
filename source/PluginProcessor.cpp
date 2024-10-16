@@ -1,67 +1,57 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-//==============================================================================     
+
+//==============================================================================
 
 MainProcessor::~MainProcessor()
 {
-// #if PERFETTO
-//     MelatoninPerfetto::get().endSession();
-// #endif
+    // #if PERFETTO
+    //     MelatoninPerfetto::get().endSession();
+    // #endif
 }
 
 //==============================================================================
-const juce::String MainProcessor::getName() const
-{
-    return JucePlugin_Name;
-}
+const juce::String MainProcessor::getName() const { return JucePlugin_Name; }
 
 bool MainProcessor::acceptsMidi() const
 {
-   #if JucePlugin_WantsMidiInput
+#if JucePlugin_WantsMidiInput
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
 bool MainProcessor::producesMidi() const
 {
-   #if JucePlugin_ProducesMidiOutput
+#if JucePlugin_ProducesMidiOutput
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
 bool MainProcessor::isMidiEffect() const
 {
-   #if JucePlugin_IsMidiEffect
+#if JucePlugin_IsMidiEffect
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
-double MainProcessor::getTailLengthSeconds() const
-{
-    return 0.0;
-}
+double MainProcessor::getTailLengthSeconds() const { return 0.0; }
 
 int MainProcessor::getNumPrograms()
 {
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+    return 1; // NB: some hosts don't cope very well if you tell them there are 0
+              // programs, so this should be at least 1, even if you're not really
+              // implementing programs.
 }
 
-int MainProcessor::getCurrentProgram()
-{
-    return 0;
-}
+int MainProcessor::getCurrentProgram() { return 0; }
 
-void MainProcessor::setCurrentProgram (int index)
-{
-    juce::ignoreUnused (index);
-}
+void MainProcessor::setCurrentProgram (int index) { juce::ignoreUnused (index); }
 
 const juce::String MainProcessor::getProgramName (int index)
 {
@@ -82,14 +72,13 @@ void MainProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // mainProcessor->setPlayConfigDetails (getMainBusNumInputChannels(),
     //                                         getMainBusNumOutputChannels(),
     //                                         sampleRate, samplesPerBlock);
-    // for (auto node : mainProcessor->getNodes())         
+    // for (auto node : mainProcessor->getNodes())
     //     node->getProcessor()->enableAllBuses();
 
     // mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
     cmajorJITLoaderPlugin->prepareToPlay (sampleRate, samplesPerBlock);
-    neuralProcessor.prepareToPlay(sampleRate, samplesPerBlock);
-    postProcessor.prepareToPlay(sampleRate, samplesPerBlock); 
-
+    neuralProcessor.prepareToPlay (sampleRate, samplesPerBlock);
+    postProcessor.prepareToPlay (sampleRate, samplesPerBlock);
 }
 
 void MainProcessor::releaseResources()
@@ -104,41 +93,39 @@ void MainProcessor::releaseResources()
 
 bool MainProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
+#if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
     return true;
-  #else
+#else
     // This is the place where you check if the layout is supported.
     // In this template code we only support mono or stereo.
     // Some plugin hosts, such as certain GarageBand versions, will only
     // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono() && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
+        // This checks if the input layout matches the output layout
+#if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
+#endif
 
     return true;
-  #endif
+#endif
 }
 
 void MainProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
+                                  juce::MidiBuffer& midiMessages)
 {
-
-    auto message = juce::MidiMessage::noteOn (1, 28, 1.0f); 
+    auto message = juce::MidiMessage::noteOn (1, 28, 1.0f);
     // message.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
-    midiMessages.addEvent(message, 0);
+    midiMessages.addEvent (message, 0);
     // juce::ignoreUnused (midiMessages);
 
     // mainProcessor->processBlock (buffer, midiMessages);
-    cmajorJITLoaderPlugin->processBlock(buffer, midiMessages);
-    neuralProcessor.processBlock(buffer, midiMessages);
-    postProcessor.processBlock(buffer, midiMessages); 
+    cmajorJITLoaderPlugin->processBlock (buffer, midiMessages);
+    neuralProcessor.processBlock (buffer, midiMessages);
+    postProcessor.processBlock (buffer, midiMessages);
 }
 
 //==============================================================================
@@ -149,7 +136,7 @@ bool MainProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* MainProcessor::createEditor()
 {
-    return new MainProcessorEditor(*this);
+    return new MainProcessorEditor (*this);
     // return new juce::GenericAudioProcessorEditor(*this);
 }
 
@@ -164,8 +151,9 @@ void MainProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void MainProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    // You should use this method to restore your parameters from this memory
+    // block, whose contents will have been created by the getStateInformation()
+    // call.
     juce::ignoreUnused (data, sizeInBytes);
 }
 

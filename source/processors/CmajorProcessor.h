@@ -20,15 +20,15 @@
 #include <JuceHeader.h>
 
 #if JUCE_LINUX
- #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..
- #define Time TimeX
- #define Drawable DrawableX
- #define Status StatusX
- #include <gtk/gtkx.h>
- #undef Font
- #undef Time
- #undef Drawable
- #undef Status
+#define Font FontX // Gotta love these C headers with global symbol clashes.. sigh..
+#define Time TimeX
+#define Drawable DrawableX
+#define Status StatusX
+#include <gtk/gtkx.h>
+#undef Font
+#undef Time
+#undef Drawable
+#undef Status
 #endif
 
 #include <utility>
@@ -37,9 +37,9 @@
 #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_GeneratedCppEngine.h"
 
 #if CMAJ_USE_QUICKJS_WORKER
- #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
+#include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #else
- #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
+#include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #endif
 
 //==============================================================================
@@ -52,21 +52,30 @@
 ///
 
 template <typename DerivedType>
-class JUCEPluginBase  : public juce::AudioPluginInstance,
-                        private juce::MessageListener,
-                        public juce::ChangeBroadcaster
+class JUCEPluginBase : public juce::AudioPluginInstance
+    , private juce::MessageListener
+    , public juce::ChangeBroadcaster
 {
 public:
     JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse, BusesProperties buses)
-        : juce::AudioPluginInstance (std::move (buses)),
-          patch (std::move (patchToUse))
-        {   
-        juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
+        : juce::AudioPluginInstance (std::move (buses))
+        , patch (std::move (patchToUse))
+    {
+        juce::MessageManager::callAsync ([]
+                                         {
+                                             choc::messageloop::initialise();
+                                         });
 
         patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
 
-        patch->stopPlayback  = [this] { suspendProcessing (true); };
-        patch->startPlayback = [this] { suspendProcessing (false); };
+        patch->stopPlayback = [this]
+        {
+            suspendProcessing (true);
+        };
+        patch->startPlayback = [this]
+        {
+            suspendProcessing (false);
+        };
 
         patch->patchChanged = [this]
         {
@@ -78,21 +87,27 @@ public:
                 juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
             };
 
-            executeOrDeferToMessageThread ([this] { handlePatchChange(); });
+            executeOrDeferToMessageThread ([this]
+                                           {
+                                               handlePatchChange();
+                                           });
         };
 
-        patch->statusChanged = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
+        patch->statusChanged = [this] (const auto& s)
+        {
+            setStatusMessage (s.statusMessage, s.messageList.hasErrors());
+        };
 
         patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
         {
             handleOutputEvent (frame, endpointID, v);
         };
 
-       #if CMAJ_USE_QUICKJS_WORKER
+#if CMAJ_USE_QUICKJS_WORKER
         enableQuickJSPatchWorker (*patch);
-       #else
+#else
         enableWebViewPatchWorker (*patch);
-       #endif
+#endif
     }
 
     ~JUCEPluginBase() override
@@ -102,18 +117,17 @@ public:
         patch.reset();
     }
 
-
     //==============================================================================
     void unload()
     {
         unload ({}, false);
     }
 
-    std::function<void(const char*)> handleConsoleMessage;
-    std::function<void(DerivedType&)> patchChangeCallback;
+    std::function<void (const char*)> handleConsoleMessage;
+    std::function<void (DerivedType&)> patchChangeCallback;
 
     //==============================================================================
-    const juce::String getName() const override          { return patch->getName(); }
+    const juce::String getName() const override { return patch->getName(); }
 
     juce::StringArray getAlternateDisplayNames() const override
     {
@@ -126,63 +140,71 @@ public:
         return s;
     }
 
-    juce::AudioProcessorEditor* createEditor() override   {return nullptr;} // { return new Editor (static_cast<DerivedType&> (*this)); }
-    bool hasEditor() const override                       { return false;} // { return true; }
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; } // { return new Editor (static_cast<DerivedType&> (*this)); }
 
-    bool acceptsMidi() const override                     { return patch->hasMIDIInput() || ! patch->isLoaded(); }
-    bool producesMidi() const override                    { return patch->hasMIDIOutput(); }
-    bool supportsMPE() const override                     { return acceptsMidi(); }
-    bool isMidiEffect() const override                    { return patch->hasMIDIInput() && ! patch->hasAudioOutput(); }
-    double getTailLengthSeconds() const override          { return 0; }
+    bool hasEditor() const override { return false; } // { return true; }
 
-    int getNumPrograms() override                               { return 1; }
-    int getCurrentProgram() override                            { return 0; }
-    void setCurrentProgram (int) override                       {}
-    const juce::String getProgramName (int) override            { return "None"; }
-    void changeProgramName (int, const juce::String&) override  {}
+    bool acceptsMidi() const override { return patch->hasMIDIInput() || ! patch->isLoaded(); }
+
+    bool producesMidi() const override { return patch->hasMIDIOutput(); }
+
+    bool supportsMPE() const override { return acceptsMidi(); }
+
+    bool isMidiEffect() const override { return patch->hasMIDIInput() && ! patch->hasAudioOutput(); }
+
+    double getTailLengthSeconds() const override { return 0; }
+
+    int getNumPrograms() override { return 1; }
+
+    int getCurrentProgram() override { return 0; }
+
+    void setCurrentProgram (int) override {}
+
+    const juce::String getProgramName (int) override { return "None"; }
+
+    void changeProgramName (int, const juce::String&) override {}
 
     //==============================================================================
-    static constexpr const char* getPluginFormatName()      { return "Cmajor"; }
-    static constexpr const char* getIdentifierPrefix()      { return "Cmajor:"; }
+    static constexpr const char* getPluginFormatName() { return "Cmajor"; }
+
+    static constexpr const char* getIdentifierPrefix() { return "Cmajor:"; }
 
     void fillInPluginDescription (juce::PluginDescription& d) const override
     {
         if (patch->isLoaded())
         {
-            d.name                = patch->getName();
-            d.descriptiveName     = patch->getDescription().empty() ? patch->getName() : patch->getDescription();
-            d.category            = patch->getCategory();
-            d.manufacturerName    = patch->getManufacturer();
-            d.version             = patch->getVersion();
-            d.lastFileModTime     = getManifestFile (*patch).getLastModificationTime();
-            d.isInstrument        = patch->isInstrument();
-            d.uniqueId            = static_cast<int> (std::hash<std::string>{} (patch->getUID()));
+            d.name = patch->getName();
+            d.descriptiveName = patch->getDescription().empty() ? patch->getName() : patch->getDescription();
+            d.category = patch->getCategory();
+            d.manufacturerName = patch->getManufacturer();
+            d.version = patch->getVersion();
+            d.lastFileModTime = getManifestFile (*patch).getLastModificationTime();
+            d.isInstrument = patch->isInstrument();
+            d.uniqueId = static_cast<int> (std::hash<std::string> {}(patch->getUID()));
         }
         else
         {
-            d.name                = "Cmajor Patch-loader";
-            d.descriptiveName     = d.name;
-            d.category            = {};
-            d.manufacturerName    = "Cmajor Software Ltd.";
-            d.version             = {};
-            d.lastFileModTime     = {};
-            d.isInstrument        = true;
-            d.uniqueId            = {};
+            d.name = "Cmajor Patch-loader";
+            d.descriptiveName = d.name;
+            d.category = {};
+            d.manufacturerName = "Cmajor Software Ltd.";
+            d.version = {};
+            d.lastFileModTime = {};
+            d.isInstrument = true;
+            d.uniqueId = {};
         }
 
-        d.fileOrIdentifier    = createPatchID (*patch);
-        d.pluginFormatName    = getPluginFormatName();
-        d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
-        d.deprecatedUid       = d.uniqueId;
+        d.fileOrIdentifier = createPatchID (*patch);
+        d.pluginFormatName = getPluginFormatName();
+        d.lastInfoUpdateTime = juce::Time::getCurrentTime();
+        d.deprecatedUid = d.uniqueId;
     }
 
     static std::string createPatchID (const cmaj::PatchManifest& m)
     {
         return getIdentifierPrefix()
-                 + choc::json::toString (choc::json::create ("ID", m.ID,
-                                                             "name", m.name,
-                                                             "location", m.getFullPathForFile (m.manifestFile)),
-                                         false);
+             + choc::json::toString (choc::json::create ("ID", m.ID, "name", m.name, "location", m.getFullPathForFile (m.manifestFile)),
+                                     false);
     }
 
     static std::string createPatchID (const cmaj::Patch& p)
@@ -215,7 +237,9 @@ public:
                 auto json = choc::json::parse (fileOrIdentifier.fromFirstOccurrenceOf (getIdentifierPrefix(), false, true).toStdString());
                 return choc::value::Value (json[property]);
             }
-            catch (...) {}
+            catch (...)
+            {
+            }
         }
 
         return {};
@@ -245,10 +269,10 @@ public:
                             const juce::Array<juce::AudioChannelSet>& suggestedLayouts)
     {
         if (patchLayouts.isEmpty())
-            return suggestedLayouts.isEmpty() || suggestedLayouts.getReference(0).size() == 0;
+            return suggestedLayouts.isEmpty() || suggestedLayouts.getReference (0).size() == 0;
 
         for (int i = 0; i < juce::jmin (patchLayouts.size(), suggestedLayouts.size()); ++i)
-            if (patchLayouts.getReference(i).defaultLayout.size() != suggestedLayouts.getReference(i).size())
+            if (patchLayouts.getReference (i).defaultLayout.size() != suggestedLayouts.getReference (i).size())
                 return false;
 
         return true;
@@ -295,8 +319,7 @@ public:
 
         midi.clear();
 
-        patch->process (audioChannels, numFrames,
-                        [&] (uint32_t frame, choc::midi::ShortMessage m)
+        patch->process (audioChannels, numFrames, [&] (uint32_t frame, choc::midi::ShortMessage m)
                         {
                             midi.addEvent (m.data(), static_cast<int> (m.length()), static_cast<int> (frame));
                         });
@@ -328,9 +351,7 @@ public:
     {
         auto layout = getBusesLayout();
 
-        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize,
-                                      static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()),
-                                      static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
+        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()), static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
     }
 
     void applyRateAndBlockSize (double sampleRate, uint32_t samplesPerBlock)
@@ -389,9 +410,9 @@ protected:
 
         auto newLatency = (int) patch->getFramesLatency();
 
-        changes.latencyChanged           = newLatency != getLatencySamples();
-        changes.parameterInfoChanged     = updateParameters();
-        changes.programChanged           = false;
+        changes.latencyChanged = newLatency != getLatencySamples();
+        changes.parameterInfoChanged = updateParameters();
+        changes.programChanged = false;
         changes.nonParameterStateChanged = true;
 
         setLatencySamples (newLatency);
@@ -412,19 +433,16 @@ protected:
         }
     }
 
-
     void notifyEditorStatusMessageChanged()
     {
         editorsShouldUpdateMessage = true;
         sendSynchronousChangeMessage();
-
     }
 
     void notifyEditorPatchChanged()
     {
         editorsShouldUpdatePatch = true;
         sendSynchronousChangeMessage();
-
     }
 
     // void notifyEditorStatusMessageChanged()
@@ -438,8 +456,6 @@ protected:
     //     if (auto* e = dynamic_cast<Editor*> (getActiveEditor()))
     //         e->onPatchChanged();
     // }
-
-
 
     //==============================================================================
     juce::ValueTree createEmptyState (std::filesystem::path location) const
@@ -469,7 +485,7 @@ protected:
             for (auto& v : values)
             {
                 juce::ValueTree value (ids.VALUE);
-                value.setProperty (ids.key,   juce::String (v.first.data(),  v.first.length()), nullptr);
+                value.setProperty (ids.key, juce::String (v.first.data(), v.first.length()), nullptr);
                 auto serialised = v.second.serialise();
                 value.setProperty (ids.value, juce::var (serialised.data.data(), serialised.data.size()), nullptr);
                 stateValues.appendChild (value, nullptr);
@@ -501,8 +517,6 @@ protected:
 
     void setNewState (const juce::ValueTree& newState)
     {
-
-
         if (newState.isValid() && ! newState.hasType (ids.Cmajor))
             return unload ("Failed to load: invalid state", true);
 
@@ -570,11 +584,16 @@ protected:
 
     static choc::value::Value convertVarToValue (const juce::var& v)
     {
-        if (v.isVoid() || v.isUndefined())  return {};
-        if (v.isString())                   return choc::value::createString (v.toString().toStdString());
-        if (v.isBool())                     return choc::value::createBool (static_cast<bool> (v));
-        if (v.isInt() || v.isInt64())       return choc::value::createInt64 (static_cast<juce::int64> (v));
-        if (v.isDouble())                   return choc::value::createFloat64 (static_cast<double> (v));
+        if (v.isVoid() || v.isUndefined())
+            return {};
+        if (v.isString())
+            return choc::value::createString (v.toString().toStdString());
+        if (v.isBool())
+            return choc::value::createBool (static_cast<bool> (v));
+        if (v.isInt() || v.isInt64())
+            return choc::value::createInt64 (static_cast<juce::int64> (v));
+        if (v.isDouble())
+            return choc::value::createFloat64 (static_cast<double> (v));
 
         if (v.isArray())
         {
@@ -593,7 +612,7 @@ protected:
         if (v.isBinaryData())
         {
             auto* block = v.getBinaryData();
-            auto  inputData = choc::value::InputData { (unsigned char *) block->begin(), (unsigned char *) block->end() };
+            auto inputData = choc::value::InputData { (unsigned char*) block->begin(), (unsigned char*) block->end() };
             return choc::value::Value::deserialise (inputData);
         }
 
@@ -611,7 +630,7 @@ protected:
         return true;
     }
 
-    struct NewStateMessage  : public juce::Message
+    struct NewStateMessage : public juce::Message
     {
         juce::ValueTree newState;
     };
@@ -672,11 +691,11 @@ protected:
     }
 
     //==============================================================================
-    struct Parameter  : public juce::HostedAudioProcessorParameter
+    struct Parameter : public juce::HostedAudioProcessorParameter
     {
         Parameter (juce::String&& pID)
-            : HostedAudioProcessorParameter (1),
-              paramID (std::move (pID))
+            : HostedAudioProcessorParameter (1)
+            , paramID (std::move (pID))
         {
         }
 
@@ -698,8 +717,14 @@ protected:
                 sendValueChangedMessageToListeners (patchParam->properties.convertTo0to1 (v));
             };
 
-            patchParam->gestureStart = [this] { beginChangeGesture(); };
-            patchParam->gestureEnd   = [this] { endChangeGesture(); };
+            patchParam->gestureStart = [this]
+            {
+                beginChangeGesture();
+            };
+            patchParam->gestureEnd = [this]
+            {
+                endChangeGesture();
+            };
             return true;
         }
 
@@ -709,7 +734,7 @@ protected:
             {
                 patchParam->valueChanged = [] (float) {};
                 patchParam->gestureStart = [] {};
-                patchParam->gestureEnd   = [] {};
+                patchParam->gestureEnd = [] {};
             }
         }
 
@@ -719,14 +744,21 @@ protected:
                 patchParam->valueChanged (patchParam->currentValue);
         }
 
-        juce::String getParameterID() const override                { return paramID; }
-        juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
-        juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
-        Category getCategory() const override                       { return Category::genericParameter; }
-        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.discrete; }
-        bool isBoolean() const override                             { return patchParam != nullptr && patchParam->properties.boolean; }
-        bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->properties.automatable; }
-        bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->properties.hidden; }
+        juce::String getParameterID() const override { return paramID; }
+
+        juce::String getName (int maxLength) const override { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
+
+        juce::String getLabel() const override { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
+
+        Category getCategory() const override { return Category::genericParameter; }
+
+        bool isDiscrete() const override { return patchParam != nullptr && patchParam->properties.discrete; }
+
+        bool isBoolean() const override { return patchParam != nullptr && patchParam->properties.boolean; }
+
+        bool isAutomatable() const override { return patchParam == nullptr || patchParam->properties.automatable; }
+
+        bool isMetaParameter() const override { return patchParam != nullptr && patchParam->properties.hidden; }
 
         juce::StringArray getAllValueStrings() const override
         {
@@ -739,9 +771,15 @@ protected:
             return result;
         }
 
-        float getDefaultValue() const override       { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.defaultValue) : 0.0f; }
-        float getValue() const override              { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->currentValue) : 0.0f; }
-        void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false, -1, 0); }
+        float getDefaultValue() const override { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.defaultValue) : 0.0f; }
+
+        float getValue() const override { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->currentValue) : 0.0f; }
+
+        void setValue (float newValue) override
+        {
+            if (patchParam != nullptr)
+                patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false, -1, 0);
+        }
 
         juce::String getText (float v, int length) const override
         {
@@ -876,14 +914,14 @@ protected:
 
     //==============================================================================
     //==============================================================================
-    struct Editor  : public juce::Component, public juce::ChangeListener
+    struct Editor : public juce::Component
+        , public juce::ChangeListener
     {
         Editor (DerivedType& p)
-            : owner (p),
-              patchWebView (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
+            : owner (p)
+            , patchWebView (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
         {
-
-            owner.addChangeListener(this);
+            owner.addChangeListener (this);
 
             patchWebViewHolder = choc::ui::createJUCEWebViewHolder (patchWebView->getWebView());
             // patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
@@ -909,27 +947,29 @@ protected:
         ~Editor() override
         {
             // owner.editorBeingDeleted (this);
-            owner.removeChangeListener(this);
+            owner.removeChangeListener (this);
             setLookAndFeel (nullptr);
             patchWebViewHolder.reset();
             patchWebView.reset();
         }
 
-
-        void changeListenerCallback (juce::ChangeBroadcaster * source) override {
-            if (source == &owner){
-                if (owner.editorsShouldUpdatePatch) {
+        void changeListenerCallback (juce::ChangeBroadcaster* source) override
+        {
+            if (source == &owner)
+            {
+                if (owner.editorsShouldUpdatePatch)
+                {
                     onPatchChanged();
                     owner.editorsShouldUpdatePatch = false;
                 }
-                else if (owner.editorsShouldUpdateMessage){
-
+                else if (owner.editorsShouldUpdateMessage)
+                {
                     statusMessageChanged();
-                    owner.editorsShouldUpdateMessage = false; 
+                    owner.editorsShouldUpdateMessage = false;
                 }
             };
         }
-        
+
         void statusMessageChanged()
         {
             owner.refreshExtraComp (extraComp.get());
@@ -938,18 +978,18 @@ protected:
 
         static cmaj::PatchManifest::View derivePatchViewSize (const DerivedType& owner)
         {
-            auto view = cmaj::PatchManifest::View
-            {
-                choc::json::create ("width", owner.lastEditorWidth,
-                                    "height", owner.lastEditorHeight)
+            auto view = cmaj::PatchManifest::View {
+                choc::json::create ("width", owner.lastEditorWidth, "height", owner.lastEditorHeight)
             };
 
             if (auto manifest = owner.patch->getManifest())
                 if (auto v = manifest->findDefaultView())
                     view = *v;
 
-            if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
-            if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
+            if (view.getWidth() == 0)
+                view.view.setMember ("width", defaultWidth);
+            if (view.getHeight() == 0)
+                view.view.setMember ("height", defaultHeight);
 
             return view;
         }
@@ -1001,11 +1041,11 @@ protected:
             patchWebViewHolder->setBounds (r.removeFromTop (getHeight() - DerivedType::extraCompHeight));
             // r.removeFromTop (4);
 
-                // if (getWidth() > 0 && getHeight() > 0)
-                // {
-                //     owner.lastEditorWidth = patchWebViewHolder->getWidth();
-                //     owner.lastEditorHeight = patchWebViewHolder->getHeight();
-                // }
+            // if (getWidth() > 0 && getHeight() > 0)
+            // {
+            //     owner.lastEditorWidth = patchWebViewHolder->getWidth();
+            //     owner.lastEditorHeight = patchWebViewHolder->getHeight();
+            // }
             // }
 
             if (extraComp)
@@ -1016,7 +1056,7 @@ protected:
 
         void paint (juce::Graphics& g) override
         {
-            g.fillAll (juce::Colours::black); 
+            g.fillAll (juce::Colours::black);
         }
 
         //==============================================================================
@@ -1034,23 +1074,23 @@ protected:
     };
 
     int lastEditorWidth = 0, lastEditorHeight = 0;
-    bool editorsShouldUpdateMessage = false, editorsShouldUpdatePatch = false; 
+    bool editorsShouldUpdateMessage = false, editorsShouldUpdatePatch = false;
 
     //==============================================================================
     struct IDs
     {
-        const juce::Identifier Cmajor     { "Cmajor" },
-                               PARAMS     { "PARAMS" },
-                               PARAM      { "PARAM" },
-                               ID         { "ID" },
-                               V          { "V" },
-                               STATE      { "STATE" },
-                               VALUE      { "VALUE" },
-                               location   { "location" },
-                               key        { "key" },
-                               value      { "value" },
-                               viewWidth  { "viewWidth" },
-                               viewHeight { "viewHeight" };
+        const juce::Identifier Cmajor { "Cmajor" },
+            PARAMS { "PARAMS" },
+            PARAM { "PARAM" },
+            ID { "ID" },
+            V { "V" },
+            STATE { "STATE" },
+            VALUE { "VALUE" },
+            location { "location" },
+            key { "key" },
+            value { "value" },
+            viewWidth { "viewWidth" },
+            viewHeight { "viewHeight" };
     } ids;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JUCEPluginBase)
@@ -1058,7 +1098,7 @@ protected:
 
 //==============================================================================
 /// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
-class JITLoaderPlugin  : public JUCEPluginBase<JITLoaderPlugin>
+class JITLoaderPlugin : public JUCEPluginBase<JITLoaderPlugin>
 {
 public:
     JITLoaderPlugin (std::shared_ptr<cmaj::Patch> patchToUse)
@@ -1077,17 +1117,16 @@ public:
         setNewStateAsync (createEmptyState (fileToLoad));
     }
 
-
-    juce::Component * createUI(){
-        return new Editor(*this); 
+    juce::Component* createUI()
+    {
+        return new Editor (*this);
     }
 
     void loadPatch (const cmaj::PatchManifest& manifest)
     {
-
-            cmaj::Patch::LoadParams loadParams;
-            loadParams.manifest = manifest;
-            patch->loadPatch (loadParams, false);
+        cmaj::Patch::LoadParams loadParams;
+        loadParams.manifest = manifest;
+        patch->loadPatch (loadParams, false);
     }
 
     bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
@@ -1111,7 +1150,7 @@ public:
     static BusesProperties getBusLayout()
     {
         BusesProperties layout;
-        layout.addBus (true,  "Input",  juce::AudioChannelSet::stereo(), true);
+        layout.addBus (true, "Input", juce::AudioChannelSet::stereo(), true);
         layout.addBus (false, "Output", juce::AudioChannelSet::stereo(), true);
         return layout;
     }
@@ -1121,15 +1160,19 @@ public:
         return patch->isPlayable();
     }
 
-    struct ExtraEditorComponent  : public juce::Component,
-                                   public juce::FileDragAndDropTarget
+    struct ExtraEditorComponent : public juce::Component
+        , public juce::FileDragAndDropTarget
     {
-        ExtraEditorComponent (JITLoaderPlugin& p) : plugin (p)
+        ExtraEditorComponent (JITLoaderPlugin& p)
+            : plugin (p)
         {
             messageBox.setMultiLine (true);
             messageBox.setReadOnly (true);
 
-            unloadButton.onClick = [this] { plugin.unload(); };
+            unloadButton.onClick = [this]
+            {
+                plugin.unload();
+            };
 
             addAndMakeVisible (messageBox);
             addAndMakeVisible (unloadButton);
@@ -1146,11 +1189,11 @@ public:
         {
             unloadButton.setVisible (plugin.patch->isLoaded());
 
-           #if JUCE_MAJOR_VERSION == 8
+#if JUCE_MAJOR_VERSION == 8
             juce::Font f (juce::FontOptions (18.0f));
-           #else
+#else
             juce::Font f (18.0f);
-           #endif
+#endif
 
             f.setTypefaceName (juce::Font::getDefaultMonospacedFontName());
             messageBox.setFont (f);
@@ -1174,8 +1217,9 @@ public:
             return files.size() == 1 && files[0].endsWith (".cmajorpatch");
         }
 
-        void fileDragEnter (const juce::StringArray&, int, int) override       { setDragOver (true); }
-        void fileDragExit (const juce::StringArray&) override                  { setDragOver (false); }
+        void fileDragEnter (const juce::StringArray&, int, int) override { setDragOver (true); }
+
+        void fileDragExit (const juce::StringArray&) override { setDragOver (false); }
 
         void filesDropped (const juce::StringArray& files, int, int) override
         {
@@ -1220,22 +1264,22 @@ public:
 
 //==============================================================================
 /// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
-class SinglePatchJITPlugin  : public JUCEPluginBase<SinglePatchJITPlugin>
+class SinglePatchJITPlugin : public JUCEPluginBase<SinglePatchJITPlugin>
 {
 public:
     SinglePatchJITPlugin (std::shared_ptr<cmaj::Patch> patchToUse,
                           std::filesystem::path manifestLocationToUse)
-        : JUCEPluginBase<SinglePatchJITPlugin> (patchToUse, preloadBusLayout (*patchToUse, manifestLocationToUse)),
-          manifestLocation (std::move (manifestLocationToUse))
+        : JUCEPluginBase<SinglePatchJITPlugin> (patchToUse, preloadBusLayout (*patchToUse, manifestLocationToUse))
+        , manifestLocation (std::move (manifestLocationToUse))
     {
         setNewStateAsync (createEmptyState (manifestLocation));
     }
 
-
-    juce::Component * createUI(){
-        return new Editor(*this); 
+    juce::Component* createUI()
+    {
+        return new Editor (*this);
     }
-    
+
     bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
     {
         if (! newState.isValid())
@@ -1262,8 +1306,12 @@ public:
     std::filesystem::path manifestLocation;
 
     static constexpr int extraCompHeight = 0;
-    static bool isViewVisible()  { return true; }
+
+    static bool isViewVisible() { return true; }
+
     std::unique_ptr<juce::Component> createExtraComponent() { return {}; }
+
     void refreshExtraComp (juce::Component*) {}
 };
- // namespace cmaj::plugin
+
+// namespace cmaj::plugin

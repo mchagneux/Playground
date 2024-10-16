@@ -11,5 +11,6 @@
         "-DPERFETTO=OFF",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     ],
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "editor.formatOnSave": true
 }
