@@ -39,7 +39,7 @@ PARAMETER_ID (distortionHighpass)
 PARAMETER_ID (distortionInGain)
 PARAMETER_ID (distortionCompGain)
 PARAMETER_ID (distortionMix)
-PARAMETER_ID (neuralBackend)
+// PARAMETER_ID (neuralBackend)
 PARAMETER_ID (neuralDryWet)
 PARAMETER_ID (compressorEnabled)
 PARAMETER_ID (compressorThreshold)
@@ -185,27 +185,28 @@ struct DistortionParameters
 
 struct NeuralParameters
 {
-    inline static juce::StringArray backendTypes { "TFLITE", "LIBTORCH", "ONNXRUNTIME", "NONE" };
-    inline static juce::String defaultBackend { backendTypes[2] };
+    // inline static juce::StringArray backendTypes { "TFLITE", "LIBTORCH", "ONNXRUNTIME", "NONE" };
+    // inline static juce::String defaultBackend { backendTypes[2] };
 
     template <typename T>
     explicit NeuralParameters (T& layout)
-        : neuralBackend (addToLayout<juce::AudioParameterChoice> (
+        : // : neuralBackend (addToLayout<juce::AudioParameterChoice> (
+        //     layout,
+        //     ID::neuralBackend,
+        //     "Backend type",
+        //     backendTypes,
+        //     backendTypes.indexOf (defaultBackend)))
+
+        neuralDryWet (addToLayout<Parameter> (
             layout,
-            ID::neuralBackend,
-            "Backend type",
-            backendTypes,
-            backendTypes.indexOf (defaultBackend)))
-        , neuralDryWet (addToLayout<Parameter> (
-              layout,
-              ID::neuralDryWet,
-              "Dry / Wet",
-              juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-              1.0f))
+            ID::neuralDryWet,
+            "Dry / Wet",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
+            1.0f))
     {
     }
 
-    juce::AudioParameterChoice& neuralBackend;
+    // juce::AudioParameterChoice& neuralBackend;
     Parameter& neuralDryWet;
 };
 

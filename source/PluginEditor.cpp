@@ -2,7 +2,7 @@
 #include "./utils/Panels.h"
 
 //==============================================================================
-MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
+PluginEditor::PluginEditor (Plugin& p)
     : juce::AudioProcessorEditor (&p)
     , processorRef (p)
     , cmajorEditor (p.getCmajorProcessor().createUI())
@@ -10,11 +10,6 @@ MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
     , neuralControls (*this, p.parameters.neural)
 {
     juce::ignoreUnused (processorRef);
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    // cmajorJITComponent =
-    // std::make_unique<juce::Component>(static_cast<juce::Component
-    // *>(processorRef.getCmajorProcessor().createEditor()));
 
     addAndMakeVisible (*cmajorEditor);
     addAndMakeVisible (topPanelComponent);
@@ -25,20 +20,17 @@ MainProcessorEditor::MainProcessorEditor (MainProcessor& p)
     setSize (1600, 900);
 }
 
-MainProcessorEditor::~MainProcessorEditor() {}
+PluginEditor::~PluginEditor() {}
 
 //==============================================================================
-void MainProcessorEditor::paint (juce::Graphics& g)
+void PluginEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a
     // solid colour)
     g.fillAll (juce::Colours::black);
-
-    // g.setColour (juce::Colours::white);
-    // g.setFont (15.0f);
 }
 
-void MainProcessorEditor::resized()
+void PluginEditor::resized()
 {
     auto area = getLocalBounds();
     auto topPanelArea = area.removeFromTop ((int) (getHeight() / 8));
@@ -49,10 +41,4 @@ void MainProcessorEditor::resized()
     cmajorEditor->setBounds (area.removeFromLeft ((int) (getWidth() / 3)));
     postProcessorControls.setBounds (area.removeFromRight ((int) (getWidth() / 3)));
     neuralControls.setBounds (area);
-
-    // neuralComponent.setBounds(area.removeFromLeft((int) (getWidth() / 3)));
-    //
-
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
 }

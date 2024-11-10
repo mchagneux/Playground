@@ -3,6 +3,14 @@
 
 using SampleType = float;
 
+auto executeOnMessageThread (auto&& fn)
+{
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+        return fn();
+
+    juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
+}
+
 template <typename Func, typename... Items>
 constexpr void forEach (Func&& func, Items&&... items)
 {

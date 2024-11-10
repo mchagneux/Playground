@@ -10,20 +10,16 @@
 // #include <melatonin_perfetto/melatonin_perfetto.h>
 
 //==============================================================================
-class MainProcessor final : public juce::AudioProcessor
+class Plugin final : public juce::AudioProcessor
 {
 public:
-    using AudioGraphIOProcessor =
-        juce::AudioProcessorGraph::AudioGraphIOProcessor;
-    using Node = juce::AudioProcessorGraph::Node;
-
     //==============================================================================
-    MainProcessor()
-        : MainProcessor (juce::AudioProcessorValueTreeState::ParameterLayout {})
+    Plugin()
+        : Plugin (juce::AudioProcessorValueTreeState::ParameterLayout {})
     {
     }
 
-    ~MainProcessor() override;
+    ~Plugin() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -81,7 +77,7 @@ public:
     Parameters parameters;
 
 private:
-    explicit MainProcessor (
+    explicit Plugin (
         juce::AudioProcessorValueTreeState::ParameterLayout layout)
         : AudioProcessor (getBusesProperties())
         , parameters (layout)
@@ -104,11 +100,8 @@ private:
 
     PostProcessor postProcessor;
     NeuralProcessor neuralProcessor;
-
-    // std::unique_ptr<CmajorProcessor> cmajorProcessor;
     std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin;
-    // std::unique_ptr<NeuralProcessor> neuralProcessor;
-    // std::unique_ptr<AudioProcessorGraph> mainProcessor;
+
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Plugin)
 };

@@ -23,10 +23,13 @@ project(Playground VERSION 0.0.1)
 if(APPLE)
 set(FORMATS_TO_BUILD AU VST3 Standalone)
 else()
-set(FORMATS_TO_BUILD VST3 Standalone)
+set(FORMATS_TO_BUILD Standalone)
 endif()
 
+
+
 set (TARGET_NAME ${PROJECT_NAME})
+set(BACKEND_LIBTORCH ON)
 
 # Sets the minimum macOS version
 if (APPLE)
@@ -89,6 +92,7 @@ add_subdirectory(3rd_party/JUCE juce)                    # If you've put JUCE in
 Include (FetchContent)
 
 
+
 # FetchContent_Declare (melatonin_perfetto
 #   GIT_REPOSITORY https://github.com/sudara/melatonin_perfetto.git
 #   GIT_TAG origin/main)
@@ -97,20 +101,15 @@ Include (FetchContent)
 
 
 
-FetchContent_Declare (melatonin_inspector
-  GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
-  GIT_TAG origin/main
-  SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
-FetchContent_MakeAvailable (melatonin_inspector)
+# FetchContent_Declare (melatonin_inspector
+#   GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
+#   GIT_TAG origin/main
+#   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
+# FetchContent_MakeAvailable (melatonin_inspector)
 
 
 
 add_subdirectory(assets)
-
-# Add the path to the anira library as cmake prefix path and find the package
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib)
-find_package(anira REQUIRED)
-
 
 
 juce_add_plugin(${TARGET_NAME}
@@ -118,7 +117,7 @@ juce_add_plugin(${TARGET_NAME}
     BUNDLE_ID ""
     COMPANY_NAME "RM_ESTALI"
     COMPANY_COPYRIGHT ""
-    PLUGIN_CODE Playground
+    PLUGIN_CODE PLGD
     FORMATS ${FORMATS_TO_BUILD}
     IS_SYNTH TRUE
     COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
@@ -132,8 +131,9 @@ juce_generate_juce_header(${TARGET_NAME})
 
 
 
-set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
-set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
+# set(GUITARLSTM_MODELS_PATH_TENSORFLOW "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/tensorflow-version/models/")
+# set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLSTM/pytorch-version/models/")
+# set(RAVE_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/models/rave/")
 
 # target_compile_definitions(${TARGET_NAME}
 #     PUBLIC
@@ -156,8 +156,17 @@ set(GUITARLSTM_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/3rd_party/GuitarLS
 # )
 # add_compile_definitions(MODEL_TO_USE=2) # GuitarLSTM
 
+
+
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 target_compile_options(${TARGET_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})
+
+
+
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.3)
+find_package(anira REQUIRED)
+target_include_directories(${TARGET_NAME} PUBLIC ${anira_INCLUDE_DIRS})
+
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC
@@ -166,21 +175,8 @@ target_compile_definitions(${TARGET_NAME}
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_WEB_BROWSER=0
         DONT_SET_USING_JUCE_NAMESPACE=1
-        GUITARLSTM_MODELS_PATH_TENSORFLOW="${GUITARLSTM_MODELS_PATH_TENSORFLOW}"
-        GUITARLSTM_MODELS_PATH_PYTORCH="${GUITARLSTM_MODELS_PATH_PYTORCH}"
-        STEERABLENAFX_MODELS_PATH_TENSORFLOW="${STEERABLENAFX_MODELS_PATH_TENSORFLOW}"
-        STEERABLENAFX_MODELS_PATH_PYTORCH="${STEERABLENAFX_MODELS_PATH_PYTORCH}"
-        STATEFULLSTM_MODELS_PATH_TENSORFLOW="${STATEFULLSTM_MODELS_PATH_TENSORFLOW}"
-        STATEFULLSTM_MODELS_PATH_PYTORCH="${STATEFULLSTM_MODELS_PATH_PYTORCH}"
-        MODEL_TO_USE=2
-        # add_compile_definitions(MODEL_TO_USE=1) # steerable-nafx
-# GuitarLSTM
-# add_compile_definitions(MODEL_TO_USE=3) # stateful-LSTM
-            # Backend-specific definitions
-        $<$<BOOL:${BACKEND_LIBTORCH}>:USE_LIBTORCH>
-        $<$<BOOL:${BACKEND_ONNXRUNTIME}>:USE_ONNXRUNTIME>
-        $<$<BOOL:${BACKEND_TFLITE}>:USE_TFLITE>
-    )
+        # RAVE_MODELS_PATH_PYTORCH="${RAVE_MODELS_PATH_PYTORCH}"
+)
     
 
 add_compile_definitions (
@@ -188,6 +184,9 @@ add_compile_definitions (
     $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
 )
+
+
+
 
 
 # Add all source files to file list
@@ -206,12 +205,13 @@ foreach (DIR ${SOURCE_DIRS})
     endif ()
 endforeach ()
 
+
+
 # Make the folder structure visible in IDEs like Xcode
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/source PREFIX "source" FILES ${SOURCES})
 
 # target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/cmajor)
 # target_include_directories(${TARGET_NAME} PRIVATE 3rd_party/cmajor/include/choc)
-
 
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -222,6 +222,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries (${TARGET_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
     # add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
 endif ()
+
+
+
 
 
 # Make the folder structure visible in the IDE
@@ -257,11 +260,11 @@ target_link_libraries(${TARGET_NAME}
         cmajor_lib
         juce::juce_audio_utils
         # Melatonin::Perfetto
-        melatonin_inspector
+        # melatonin_inspector
 
 )
 
-file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.2-lib/lib/*.dll")
+file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-0.1.3/lib/*.dll")
 list(APPEND NECESSARY_DLLS ${INFERENCE_ENGINE_DLLS})
 
 foreach(FORMAT IN LISTS FORMATS_TO_BUILD)

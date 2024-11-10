@@ -44,8 +44,8 @@ struct DistortionProcessor
         return oversamplers[size_t (currentIndexOversampling)].getLatencyInSamples();
     }
 
-    template <typename Context>
-    void process (Context& context)
+    // template <typename Context>
+    void process (juce::dsp::ProcessContextReplacing<SampleType>& context)
     {
         if (context.isBypassed)
             return;

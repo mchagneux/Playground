@@ -144,19 +144,19 @@ private:
     {
         realTimeCoeffsRequireUpdate.store (true);
 
-        const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
-        {
-            if (juce::MessageManager::getInstance()->isThisTheMessageThread())
-                return fn();
+        // const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
+        // {
+        //     if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+        //         return fn();
 
-            juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
-        };
+        //     juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
+        // };
 
-        executeOrDeferToMessageThread ([this]
-                                       {
-                                           updateNonRealTimeCoeffs();
-                                           sendSynchronousChangeMessage();
-                                       });
+        executeOnMessageThread ([this]
+                                {
+                                    updateNonRealTimeCoeffs();
+                                    sendSynchronousChangeMessage();
+                                });
     }
 
     void parameterGestureChanged (int, bool) override {}
