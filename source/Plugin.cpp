@@ -67,13 +67,13 @@ void Plugin::changeProgramName (int index, const juce::String& newName)
 //==============================================================================
 void Plugin::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    cmajorJITLoaderPlugin->prepareToPlay (sampleRate, samplesPerBlock);
-
     auto processSpec = juce::dsp::ProcessSpec {
         sampleRate,
         (juce::uint32) samplesPerBlock,
         2
     };
+
+    cmajorJITLoaderPlugin->prepare (processSpec);
     neuralProcessor.prepare (processSpec);
     postProcessor.prepare (processSpec);
 }
@@ -111,7 +111,7 @@ void Plugin::processBlock (juce::AudioBuffer<float>& buffer,
     auto message = juce::MidiMessage::noteOn (1, 28, 1.0f);
     midiMessages.addEvent (message, 0);
 
-    cmajorJITLoaderPlugin->processBlock (buffer, midiMessages);
+    cmajorJITLoaderPlugin->process (buffer, midiMessages);
 
     auto block = juce::dsp::AudioBlock<float> (buffer);
     auto context = juce::dsp::ProcessContextReplacing<float> (block);

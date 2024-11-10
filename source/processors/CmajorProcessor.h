@@ -52,30 +52,28 @@
 ///
 
 template <typename DerivedType>
-class JUCEPluginBase : public juce::AudioPluginInstance
-    , private juce::MessageListener
+class JUCEPluginBase : private juce::MessageListener
     , public juce::ChangeBroadcaster
 {
 public:
-    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse, BusesProperties buses)
-        : juce::AudioPluginInstance (std::move (buses))
-        , patch (std::move (patchToUse))
+    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse)
+        : patch (std::move (patchToUse))
     {
         juce::MessageManager::callAsync ([]
                                          {
                                              choc::messageloop::initialise();
                                          });
 
-        patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
+        // patch->setHostDescription (std::string (juce::AudioProcessor::getWrapperTypeDescription (juce::AudioProcessor::wrapperType)));
 
-        patch->stopPlayback = [this]
-        {
-            suspendProcessing (true);
-        };
-        patch->startPlayback = [this]
-        {
-            suspendProcessing (false);
-        };
+        // patch->stopPlayback = [this]
+        // {
+        //     // suspendProcessing (true);
+        // };
+        // patch->startPlayback = [this]
+        // {
+        //     // suspendProcessing (false);
+        // };
 
         patch->patchChanged = [this]
         {
@@ -125,80 +123,6 @@ public:
 
     std::function<void (const char*)> handleConsoleMessage;
     std::function<void (DerivedType&)> patchChangeCallback;
-
-    //==============================================================================
-    const juce::String getName() const override { return patch->getName(); }
-
-    juce::StringArray getAlternateDisplayNames() const override
-    {
-        juce::StringArray s;
-        s.add (patch->getName());
-
-        if (auto n = patch->getDescription(); ! n.empty())
-            s.add (n);
-
-        return s;
-    }
-
-    juce::AudioProcessorEditor* createEditor() override { return nullptr; } // { return new Editor (static_cast<DerivedType&> (*this)); }
-
-    bool hasEditor() const override { return false; } // { return true; }
-
-    bool acceptsMidi() const override { return patch->hasMIDIInput() || ! patch->isLoaded(); }
-
-    bool producesMidi() const override { return patch->hasMIDIOutput(); }
-
-    bool supportsMPE() const override { return acceptsMidi(); }
-
-    bool isMidiEffect() const override { return patch->hasMIDIInput() && ! patch->hasAudioOutput(); }
-
-    double getTailLengthSeconds() const override { return 0; }
-
-    int getNumPrograms() override { return 1; }
-
-    int getCurrentProgram() override { return 0; }
-
-    void setCurrentProgram (int) override {}
-
-    const juce::String getProgramName (int) override { return "None"; }
-
-    void changeProgramName (int, const juce::String&) override {}
-
-    //==============================================================================
-    static constexpr const char* getPluginFormatName() { return "Cmajor"; }
-
-    static constexpr const char* getIdentifierPrefix() { return "Cmajor:"; }
-
-    void fillInPluginDescription (juce::PluginDescription& d) const override
-    {
-        if (patch->isLoaded())
-        {
-            d.name = patch->getName();
-            d.descriptiveName = patch->getDescription().empty() ? patch->getName() : patch->getDescription();
-            d.category = patch->getCategory();
-            d.manufacturerName = patch->getManufacturer();
-            d.version = patch->getVersion();
-            d.lastFileModTime = getManifestFile (*patch).getLastModificationTime();
-            d.isInstrument = patch->isInstrument();
-            d.uniqueId = static_cast<int> (std::hash<std::string> {}(patch->getUID()));
-        }
-        else
-        {
-            d.name = "Cmajor Patch-loader";
-            d.descriptiveName = d.name;
-            d.category = {};
-            d.manufacturerName = "Cmajor Software Ltd.";
-            d.version = {};
-            d.lastFileModTime = {};
-            d.isInstrument = true;
-            d.uniqueId = {};
-        }
-
-        d.fileOrIdentifier = createPatchID (*patch);
-        d.pluginFormatName = getPluginFormatName();
-        d.lastInfoUpdateTime = juce::Time::getCurrentTime();
-        d.deprecatedUid = d.uniqueId;
-    }
 
     static std::string createPatchID (const cmaj::PatchManifest& m)
     {
@@ -256,48 +180,19 @@ public:
     }
 
     //==============================================================================
-    void prepareToPlay (double sampleRate, int samplesPerBlock) override
+
+    void prepare (juce::dsp::ProcessSpec& spec)
     {
-        applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (samplesPerBlock));
+        sampleRate = spec.sampleRate;
+        blockSize = spec.maximumBlockSize;
+        applyRateAndBlockSize (spec.sampleRate, static_cast<uint32_t> (spec.maximumBlockSize));
     }
 
-    void releaseResources() override
+    void reset()
     {
     }
 
-    static bool isLayoutOK (const juce::Array<BusProperties>& patchLayouts,
-                            const juce::Array<juce::AudioChannelSet>& suggestedLayouts)
-    {
-        if (patchLayouts.isEmpty())
-            return suggestedLayouts.isEmpty() || suggestedLayouts.getReference (0).size() == 0;
-
-        for (int i = 0; i < juce::jmin (patchLayouts.size(), suggestedLayouts.size()); ++i)
-            if (patchLayouts.getReference (i).defaultLayout.size() != suggestedLayouts.getReference (i).size())
-                return false;
-
-        return true;
-    }
-
-    bool isBusesLayoutSupported (const BusesLayout& layout) const override
-    {
-        if (! patch->isLoaded())
-            return true;
-
-        auto patchBuses = getBusesProperties (patch->getInputEndpoints(),
-                                              patch->getOutputEndpoints());
-
-        return isLayoutOK (patchBuses.inputLayouts, layout.inputBuses)
-            && isLayoutOK (patchBuses.outputLayouts, layout.outputBuses);
-    }
-
-    bool applyBusLayouts (const BusesLayout& layouts) override
-    {
-        auto result = juce::AudioPluginInstance::applyBusLayouts (layouts);
-        applyCurrentRateAndBlockSize();
-        return result;
-    }
-
-    void processBlock (juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi) override
+    void process (juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi)
     {
         if (! patch->isPlayable() || isSuspended())
         {
@@ -325,31 +220,9 @@ public:
                         });
     }
 
-    void processBlock (juce::AudioBuffer<double>&, juce::MidiBuffer&) override { CMAJ_ASSERT_FALSE; }
-
-    //==============================================================================
-    void getStateInformation (juce::MemoryBlock& data) override
-    {
-        juce::MemoryOutputStream m (data, false);
-        getUpdatedState().writeToStream (m);
-    }
-
-    void setStateInformation (const void* data, int size) override
-    {
-        choc::hash::xxHash64 hash (1);
-        hash.addInput (data, static_cast<size_t> (size));
-        auto stateHash = hash.getHash();
-
-        if (lastLoadedStateHash != stateHash)
-        {
-            lastLoadedStateHash = stateHash;
-            setNewStateAsync (juce::ValueTree::readFromData (data, static_cast<size_t> (size)));
-        }
-    }
-
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
     {
-        auto layout = getBusesLayout();
+        // auto layout = juce::AudioProcessor::BusesLayout();
 
         return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()), static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
     }
@@ -361,39 +234,17 @@ public:
 
     void applyCurrentRateAndBlockSize()
     {
-        applyRateAndBlockSize (getSampleRate(), static_cast<uint32_t> (getBlockSize()));
+        applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
+    int sampleRate = 0;
+    int blockSize = 0;
     std::shared_ptr<cmaj::Patch> patch;
     std::string statusMessage;
     bool isStatusMessageError = false;
 
 protected:
     uint64_t lastLoadedStateHash = 0;
-
-    //==============================================================================
-    //==============================================================================
-    static BusesProperties getBusesProperties (const cmaj::EndpointDetailsList& inputs,
-                                               const cmaj::EndpointDetailsList& outputs)
-    {
-        BusesProperties layout;
-
-        uint32_t inputChannelCount = 0, outputChannelCount = 0;
-
-        for (auto& input : inputs)
-            inputChannelCount += input.getNumAudioChannels();
-
-        for (auto& output : outputs)
-            outputChannelCount += output.getNumAudioChannels();
-
-        if (inputChannelCount > 0)
-            layout.addBus (true, "in", juce::AudioChannelSet::canonicalChannelSet ((int) inputChannelCount), true);
-
-        if (outputChannelCount > 0)
-            layout.addBus (false, "out", juce::AudioChannelSet::canonicalChannelSet ((int) outputChannelCount), true);
-
-        return layout;
-    }
 
     void unload (const std::string& message, bool isError)
     {
@@ -410,17 +261,22 @@ protected:
 
         auto newLatency = (int) patch->getFramesLatency();
 
-        changes.latencyChanged = newLatency != getLatencySamples();
+        changes.latencyChanged = newLatency != latency;
         changes.parameterInfoChanged = updateParameters();
         changes.programChanged = false;
         changes.nonParameterStateChanged = true;
 
-        setLatencySamples (newLatency);
+        updateLatency (newLatency);
         notifyEditorPatchChanged();
-        updateHostDisplay (changes);
+        // updateHostDisplay (changes);
 
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
+    }
+
+    void updateLatency (float newLatency)
+    {
+        latency = newLatency;
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -444,18 +300,6 @@ protected:
         editorsShouldUpdatePatch = true;
         sendSynchronousChangeMessage();
     }
-
-    // void notifyEditorStatusMessageChanged()
-    // {
-    //     if (auto e = dynamic_cast<Editor*> (getActiveEditor()))
-    //         e->statusMessageChanged();
-    // }
-
-    // void notifyEditorPatchChanged()
-    // {
-    //     if (auto* e = dynamic_cast<Editor*> (getActiveEditor()))
-    //         e->onPatchChanged();
-    // }
 
     //==============================================================================
     juce::ValueTree createEmptyState (std::filesystem::path location) const
@@ -566,7 +410,7 @@ protected:
             }
         }
 
-        if (getSampleRate() > 0)
+        if (sampleRate > 0)
             applyCurrentRateAndBlockSize();
 
         patch->loadPatch (loadParams, DerivedType::isPrecompiled);
@@ -809,7 +653,7 @@ protected:
                 if (auto steps = patchParam->properties.getNumDiscreteOptions())
                     return static_cast<int> (steps);
 
-            return AudioProcessor::getDefaultNumParameterSteps();
+            return juce::AudioProcessor::getDefaultNumParameterSteps();
         }
 
         cmaj::PatchParameterPtr patchParam;
@@ -906,11 +750,13 @@ protected:
         {
             auto p = std::make_unique<Parameter> ("P" + juce::String (parameters.size()));
             parameters.push_back (p.get());
-            addHostedParameter (std::move (p));
+            // addHostedParameter (std::move (p));
         }
     }
 
     std::vector<Parameter*> parameters;
+
+    int latency = 0;
 
     //==============================================================================
     //==============================================================================
@@ -1102,7 +948,7 @@ class JITLoaderPlugin : public JUCEPluginBase<JITLoaderPlugin>
 {
 public:
     JITLoaderPlugin (std::shared_ptr<cmaj::Patch> patchToUse)
-        : JUCEPluginBase<JITLoaderPlugin> (patchToUse, getBusLayout())
+        : JUCEPluginBase<JITLoaderPlugin> (patchToUse)
     {
         // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
         // will just create a big flat list and re-use its parameter objects when things change
@@ -1145,14 +991,6 @@ public:
             readParametersFromState (loadParams, newState);
 
         return true;
-    }
-
-    static BusesProperties getBusLayout()
-    {
-        BusesProperties layout;
-        layout.addBus (true, "Input", juce::AudioChannelSet::stereo(), true);
-        layout.addBus (false, "Output", juce::AudioChannelSet::stereo(), true);
-        return layout;
     }
 
     bool isViewVisible()
@@ -1261,57 +1099,3 @@ public:
             v->refresh();
     }
 };
-
-//==============================================================================
-/// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
-class SinglePatchJITPlugin : public JUCEPluginBase<SinglePatchJITPlugin>
-{
-public:
-    SinglePatchJITPlugin (std::shared_ptr<cmaj::Patch> patchToUse,
-                          std::filesystem::path manifestLocationToUse)
-        : JUCEPluginBase<SinglePatchJITPlugin> (patchToUse, preloadBusLayout (*patchToUse, manifestLocationToUse))
-        , manifestLocation (std::move (manifestLocationToUse))
-    {
-        setNewStateAsync (createEmptyState (manifestLocation));
-    }
-
-    juce::Component* createUI()
-    {
-        return new Editor (*this);
-    }
-
-    bool prepareManifest (cmaj::Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
-    {
-        if (! newState.isValid())
-            return false;
-
-        loadParams.manifest.initialiseWithFile (manifestLocation);
-        readParametersFromState (loadParams, newState);
-        return true;
-    }
-
-    static BusesProperties preloadBusLayout (cmaj::Patch& p, std::filesystem::path location)
-    {
-        cmaj::PatchManifest m;
-        m.initialiseWithFile (location);
-        p.preload (m);
-
-        return getBusesProperties (p.getInputEndpoints(),
-                                   p.getOutputEndpoints());
-    }
-
-    static constexpr bool isPrecompiled = false;
-    static constexpr bool isFixedPatch = true;
-
-    std::filesystem::path manifestLocation;
-
-    static constexpr int extraCompHeight = 0;
-
-    static bool isViewVisible() { return true; }
-
-    std::unique_ptr<juce::Component> createExtraComponent() { return {}; }
-
-    void refreshExtraComp (juce::Component*) {}
-};
-
-// namespace cmaj::plugin
