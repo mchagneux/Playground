@@ -18,6 +18,7 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include <cstdint>
 
 #if JUCE_LINUX
 #define Font FontX // Gotta love these C headers with global symbol clashes.. sigh..
@@ -56,8 +57,9 @@ class JUCEPluginBase : private juce::MessageListener
     , public juce::ChangeBroadcaster
 {
 public:
-    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse)
+    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
         : patch (std::move (patchToUse))
+        , processorRef (p)
     {
         juce::MessageManager::callAsync ([]
                                          {
@@ -185,7 +187,7 @@ public:
     {
         sampleRate = spec.sampleRate;
         blockSize = spec.maximumBlockSize;
-        applyRateAndBlockSize (spec.sampleRate, static_cast<uint32_t> (spec.maximumBlockSize));
+        applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
     void reset()
@@ -194,7 +196,7 @@ public:
 
     void process (juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi)
     {
-        if (! patch->isPlayable() || isSuspended())
+        if (! patch->isPlayable() || processorRef.isSuspended())
         {
             audio.clear();
             midi.clear();
@@ -203,7 +205,7 @@ public:
 
         juce::ScopedNoDenormals noDenormals;
 
-        if (auto ph = getPlayHead())
+        if (auto ph = processorRef.getPlayHead())
             updateTimelineFromPlayhead (*ph);
 
         auto audioChannels = audio.getArrayOfWritePointers();
@@ -222,14 +224,13 @@ public:
 
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
     {
-        // auto layout = juce::AudioProcessor::BusesLayout();
-
-        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()), static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
+        auto [inChannels, outChannels] = getNumChannels (patch->getInputEndpoints(), patch->getOutputEndpoints());
+        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (inChannels), static_cast<choc::buffer::ChannelCount> (outChannels));
     }
 
-    void applyRateAndBlockSize (double sampleRate, uint32_t samplesPerBlock)
+    void applyRateAndBlockSize (double rate, uint32_t samplesPerBlock)
     {
-        patch->setPlaybackParams (getPlaybackParams (sampleRate, samplesPerBlock));
+        patch->setPlaybackParams (getPlaybackParams (rate, samplesPerBlock));
     }
 
     void applyCurrentRateAndBlockSize()
@@ -237,9 +238,10 @@ public:
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
-    int sampleRate = 0;
-    int blockSize = 0;
+    double sampleRate = 0;
+    uint32_t blockSize = 0;
     std::shared_ptr<cmaj::Patch> patch;
+    juce::AudioProcessor& processorRef;
     std::string statusMessage;
     bool isStatusMessageError = false;
 
@@ -268,13 +270,13 @@ protected:
 
         updateLatency (newLatency);
         notifyEditorPatchChanged();
-        // updateHostDisplay (changes);
+        processorRef.updateHostDisplay (changes);
 
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
     }
 
-    void updateLatency (float newLatency)
+    void updateLatency (int newLatency)
     {
         latency = newLatency;
     }
@@ -758,10 +760,26 @@ protected:
 
     int latency = 0;
 
+    static std::tuple<uint32_t, uint32_t> getNumChannels (const cmaj::EndpointDetailsList& inputs,
+                                                          const cmaj::EndpointDetailsList& outputs)
+    {
+        uint32_t inputChannelCount = 0, outputChannelCount = 0;
+
+        // auto inputs = patch->get
+        for (auto& input : inputs)
+            inputChannelCount += input.getNumAudioChannels();
+
+        for (auto& output : outputs)
+            outputChannelCount += output.getNumAudioChannels();
+
+        return { inputChannelCount, outputChannelCount };
+    }
+
     //==============================================================================
     //==============================================================================
     struct Editor : public juce::Component
         , public juce::ChangeListener
+
     {
         Editor (DerivedType& p)
             : owner (p)
@@ -947,8 +965,8 @@ protected:
 class JITLoaderPlugin : public JUCEPluginBase<JITLoaderPlugin>
 {
 public:
-    JITLoaderPlugin (std::shared_ptr<cmaj::Patch> patchToUse)
-        : JUCEPluginBase<JITLoaderPlugin> (patchToUse)
+    JITLoaderPlugin (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
+        : JUCEPluginBase<JITLoaderPlugin> (patchToUse, p)
     {
         // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
         // will just create a big flat list and re-use its parameter objects when things change

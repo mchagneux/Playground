@@ -91,7 +91,7 @@ private:
         {
             return cmaj::Engine::create();
         };
-        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin> (patch);
+        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin> (patch, *this);
         cmajorJITLoaderPlugin->loadPatch (
             "E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
     }
