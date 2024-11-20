@@ -66,7 +66,7 @@ public:
                                              choc::messageloop::initialise();
                                          });
 
-        // patch->setHostDescription (std::string (juce::AudioProcessor::getWrapperTypeDescription (juce::AudioProcessor::wrapperType)));
+        patch->setHostDescription (std::string ("JUCE DSP Processor"));
 
         // patch->stopPlayback = [this]
         // {
@@ -188,7 +188,7 @@ public:
         sampleRate = spec.sampleRate;
         blockSize = spec.maximumBlockSize;
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
-        std::cout << "Prepared audio." << std::endl;
+        // std::cout << "Prepared audio." << std::endl;
     }
 
     void reset()
@@ -222,7 +222,7 @@ public:
                             midi.addEvent (m.data(), static_cast<int> (m.length()), static_cast<int> (frame));
                         });
 
-        std::cout << "Processed audio." << std::endl;
+        // std::cout << "Processed audio." << std::endl;
     }
 
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
@@ -238,7 +238,7 @@ public:
 
     void applyCurrentRateAndBlockSize()
     {
-        std::cout << "About to apply rate and block size" << std::endl;
+        // std::cout << "About to apply rate and block size" << std::endl;
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
@@ -268,24 +268,25 @@ protected:
         auto newLatency = (int) patch->getFramesLatency();
 
         changes.latencyChanged = newLatency != latency;
-        changes.parameterInfoChanged = updateParameters();
+        updateParameters();
+        changes.parameterInfoChanged = false; //
         changes.programChanged = false;
         changes.nonParameterStateChanged = true;
 
         updateLatency (newLatency);
         notifyEditorPatchChanged();
-        // processorRef.updateHostDisplay (changes);
+        processorRef.updateHostDisplay (changes);
 
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
 
-        std::cout << "Handled patch change" << std::endl;
+        // std::cout << "Handled patch change" << std::endl;
     }
 
     void updateLatency (int newLatency)
     {
         latency = newLatency;
-        std::cout << "About to update latency" << std::endl;
+        // std::cout << "About to update latency" << std::endl;
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -295,7 +296,7 @@ protected:
             statusMessage = newMessage;
             isStatusMessageError = isError;
             notifyEditorStatusMessageChanged();
-            std::cout << statusMessage << std::endl;
+            // std::cout << statusMessage << std::endl;
             // std::cout << isS << std::endl;
         }
     }
@@ -750,8 +751,11 @@ protected:
         }
 
         for (size_t i = 0; i < params.size(); ++i)
+        {
             changed = parameters[i]->setPatchParam (params[i]) || changed;
-        std::cout << "Updated parameters" << std::endl;
+            std::cout << "Update parameter index " + juce::String (i) << std::endl;
+        }
+        // std::cout << "Updated parameters" << std::endl;
         return changed;
     }
 
@@ -992,7 +996,7 @@ public:
 
     juce::Component* createUI()
     {
-        std::cout << "Creating Cmajor UI" << std::endl;
+        // std::cout << "Creating Cmajor UI" << std::endl;
         return new Editor (*this);
     }
 

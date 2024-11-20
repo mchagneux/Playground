@@ -111,12 +111,12 @@ void Plugin::processBlock (juce::AudioBuffer<float>& buffer,
     auto message = juce::MidiMessage::noteOn (1, 28, 1.0f);
     midiMessages.addEvent (message, 0);
 
-    // cmajorJITProcessor->process (buffer, midiMessages);
+    cmajorJITProcessor->process (buffer, midiMessages);
 
     auto block = juce::dsp::AudioBlock<float> (buffer);
     auto context = juce::dsp::ProcessContextReplacing<float> (block);
-    // neuralProcessor.process (context);
-    // postProcessor.process (context);
+    neuralProcessor.process (context);
+    postProcessor.process (context);
 }
 
 //==============================================================================
