@@ -268,8 +268,8 @@ protected:
         auto newLatency = (int) patch->getFramesLatency();
 
         changes.latencyChanged = newLatency != latency;
-        updateParameters();
-        changes.parameterInfoChanged = false; //
+
+        changes.parameterInfoChanged = updateParameters(); //
         changes.programChanged = false;
         changes.nonParameterStateChanged = true;
 
@@ -753,7 +753,7 @@ protected:
         for (size_t i = 0; i < params.size(); ++i)
         {
             changed = parameters[i]->setPatchParam (params[i]) || changed;
-            std::cout << "Update parameter index " + juce::String (i) << std::endl;
+            // std::cout << "Update parameter index " + juce::String (i) << std::endl;
         }
         // std::cout << "Updated parameters" << std::endl;
         return changed;
@@ -763,13 +763,13 @@ protected:
     {
         while (parameters.size() < num)
         {
-            auto p = std::make_unique<Parameter> ("P" + juce::String (parameters.size()));
-            parameters.push_back (p.get());
+            // auto p = std::make_unique<Parameter> ("P" + juce::String (parameters.size()));
+            parameters.push_back (std::make_unique<Parameter> ("P" + juce::String (parameters.size())));
             // addHostedParameter (std::move (p));
         }
     }
 
-    std::vector<Parameter*> parameters;
+    std::vector<std::unique_ptr<Parameter>> parameters;
 
     int latency = 0;
 

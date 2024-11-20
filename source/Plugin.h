@@ -55,7 +55,7 @@ public:
 
     CmajorJITProcessor& getCmajorProcessor()
     {
-        // return *cmajorJITProcessor;
+        return *cmajorJITProcessor;
         // return
         // static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor());
     }
