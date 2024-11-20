@@ -1,9 +1,18 @@
 
 #include <anira/anira.h>
+#include <anira/utils/InferenceBackend.h>
 
-inline anira::InferenceConfig RAVEConfig (
-    "E:\\audio_dev\\Playground\\models\\rave\\models\\sol_ordinario_fast.ts", // Model path
-    { 1, 1, 1024 },                                                           // Input shape
-    { 1, 1, 1024 },
-    42.66f // Maximum inference time in ms
-);
+static std::vector<anira::ModelData> model_data_config = {
+    { std::string ("E:\\audio_dev\\Playground\\models\\rave\\models\\sol_ordinario_fast.ts"), anira::InferenceBackend::LIBTORCH },
+
+};
+
+static std::vector<anira::TensorShape> tensor_shape_config = {
+    { { { 1, 1, 1024 } }, { { 1, 1, 1024 } }, anira::InferenceBackend::LIBTORCH },
+
+};
+
+static anira::InferenceConfig RAVEConfig (
+    model_data_config,
+    tensor_shape_config,
+    42.66f);

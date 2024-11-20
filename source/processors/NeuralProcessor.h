@@ -35,7 +35,6 @@ public:
                                           static_cast<juce::uint32> (1) };
 
         anira::HostAudioConfig monoConfig {
-            1,
             (size_t) spec.maximumBlockSize,
             spec.sampleRate
         };
@@ -44,9 +43,9 @@ public:
 
         monoBuffer.setSize (1, spec.maximumBlockSize);
         inferenceHandler.prepare (monoConfig);
-        inferenceHandler.setInferenceBackend (anira::LIBTORCH);
+        inferenceHandler.set_inference_backend (anira::LIBTORCH);
 
-        auto newLatency = inferenceHandler.getLatency();
+        auto newLatency = inferenceHandler.get_latency();
 
         dryWetMixer.setWetLatency (newLatency);
 
@@ -82,7 +81,7 @@ public:
         monoToStereo (buffer, monoBuffer);
     }
 
-    anira::InferenceManager& getInferenceManager() { return inferenceHandler.getInferenceManager(); }
+    anira::InferenceManager& getInferenceManager() { return inferenceHandler.get_inference_manager(); }
 
 private:
     void parameterGestureChanged (int parameterIndex, bool gestureIsStarting) override {}

@@ -21,7 +21,7 @@ private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     Plugin& processorRef;
-    std::unique_ptr<juce::Component> cmajorEditor;
+    // std::unique_ptr<juce::Component> cmajorEditor;
     TopPanel topPanelComponent;
     BottomPanel bottomPanelComponent;
     PostProcessorControls postProcessorControls;

@@ -48,16 +48,16 @@
 /// JIT-compiles patches dynamically, or which is specialised to run a pre-generated
 /// C++ version of a patch.
 ///
-/// See the cmaj::plugin::JITLoaderPlugin and cmaj::plugin::GeneratedPlugin
+/// See the cmaj::plugin::CmajorJITProcessor and cmaj::plugin::GeneratedPlugin
 /// types below for how to use it in these different modes.
 ///
 
 template <typename DerivedType>
-class JUCEPluginBase : private juce::MessageListener
+class CmajorProcessorBase : private juce::MessageListener
     , public juce::ChangeBroadcaster
 {
 public:
-    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
+    CmajorProcessorBase (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
         : patch (std::move (patchToUse))
         , processorRef (p)
     {
@@ -110,7 +110,7 @@ public:
 #endif
     }
 
-    ~JUCEPluginBase() override
+    ~CmajorProcessorBase() override
     {
         patch->patchChanged = [] {};
         patch->unload();
@@ -188,6 +188,7 @@ public:
         sampleRate = spec.sampleRate;
         blockSize = spec.maximumBlockSize;
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
+        std::cout << "Prepared audio." << std::endl;
     }
 
     void reset()
@@ -205,8 +206,8 @@ public:
 
         juce::ScopedNoDenormals noDenormals;
 
-        if (auto ph = processorRef.getPlayHead())
-            updateTimelineFromPlayhead (*ph);
+        // if (auto ph = processorRef.getPlayHead())
+        // updateTimelineFromPlayhead (*ph);
 
         auto audioChannels = audio.getArrayOfWritePointers();
         auto numFrames = static_cast<choc::buffer::FrameCount> (audio.getNumSamples());
@@ -220,6 +221,8 @@ public:
                         {
                             midi.addEvent (m.data(), static_cast<int> (m.length()), static_cast<int> (frame));
                         });
+
+        std::cout << "Processed audio." << std::endl;
     }
 
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
@@ -235,6 +238,7 @@ public:
 
     void applyCurrentRateAndBlockSize()
     {
+        std::cout << "About to apply rate and block size" << std::endl;
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
@@ -270,15 +274,18 @@ protected:
 
         updateLatency (newLatency);
         notifyEditorPatchChanged();
-        processorRef.updateHostDisplay (changes);
+        // processorRef.updateHostDisplay (changes);
 
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
+
+        std::cout << "Handled patch change" << std::endl;
     }
 
     void updateLatency (int newLatency)
     {
         latency = newLatency;
+        std::cout << "About to update latency" << std::endl;
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -288,6 +295,8 @@ protected:
             statusMessage = newMessage;
             isStatusMessageError = isError;
             notifyEditorStatusMessageChanged();
+            std::cout << statusMessage << std::endl;
+            // std::cout << isS << std::endl;
         }
     }
 
@@ -742,7 +751,7 @@ protected:
 
         for (size_t i = 0; i < params.size(); ++i)
             changed = parameters[i]->setPatchParam (params[i]) || changed;
-
+        std::cout << "Updated parameters" << std::endl;
         return changed;
     }
 
@@ -957,16 +966,16 @@ protected:
             viewHeight { "viewHeight" };
     } ids;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JUCEPluginBase)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CmajorProcessorBase)
 };
 
 //==============================================================================
 /// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
-class JITLoaderPlugin : public JUCEPluginBase<JITLoaderPlugin>
+class CmajorJITProcessor : public CmajorProcessorBase<CmajorJITProcessor>
 {
 public:
-    JITLoaderPlugin (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
-        : JUCEPluginBase<JITLoaderPlugin> (patchToUse, p)
+    CmajorJITProcessor (std::shared_ptr<cmaj::Patch> patchToUse, juce::AudioProcessor& p)
+        : CmajorProcessorBase<CmajorJITProcessor> (patchToUse, p)
     {
         // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
         // will just create a big flat list and re-use its parameter objects when things change
@@ -983,6 +992,7 @@ public:
 
     juce::Component* createUI()
     {
+        std::cout << "Creating Cmajor UI" << std::endl;
         return new Editor (*this);
     }
 
@@ -1019,7 +1029,7 @@ public:
     struct ExtraEditorComponent : public juce::Component
         , public juce::FileDragAndDropTarget
     {
-        ExtraEditorComponent (JITLoaderPlugin& p)
+        ExtraEditorComponent (CmajorJITProcessor& p)
             : plugin (p)
         {
             messageBox.setMultiLine (true);
@@ -1095,7 +1105,7 @@ public:
         }
 
         //==============================================================================
-        JITLoaderPlugin& plugin;
+        CmajorJITProcessor& plugin;
         bool isDragOver = false;
 
         juce::TextEditor messageBox;

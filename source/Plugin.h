@@ -53,9 +53,9 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    JITLoaderPlugin& getCmajorProcessor()
+    CmajorJITProcessor& getCmajorProcessor()
     {
-        return *cmajorJITLoaderPlugin;
+        // return *cmajorJITProcessor;
         // return
         // static_cast<CmajorProcessor&>(*cmajorGeneratorNode->getProcessor());
     }
@@ -91,8 +91,8 @@ private:
         {
             return cmaj::Engine::create();
         };
-        cmajorJITLoaderPlugin = std::make_unique<JITLoaderPlugin> (patch, *this);
-        cmajorJITLoaderPlugin->loadPatch (
+        cmajorJITProcessor = std::make_unique<CmajorJITProcessor> (patch, *this);
+        cmajorJITProcessor->loadPatch (
             "E:\\audio_dev\\Playground\\patches\\Synth\\Synth.cmajorpatch");
     }
 
@@ -100,7 +100,7 @@ private:
 
     PostProcessor postProcessor;
     NeuralProcessor neuralProcessor;
-    std::unique_ptr<JITLoaderPlugin> cmajorJITLoaderPlugin;
+    std::unique_ptr<CmajorJITProcessor> cmajorJITProcessor;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Plugin)

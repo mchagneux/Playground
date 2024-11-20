@@ -5,13 +5,13 @@
 PluginEditor::PluginEditor (Plugin& p)
     : juce::AudioProcessorEditor (&p)
     , processorRef (p)
-    , cmajorEditor (p.getCmajorProcessor().createUI())
+    // , cmajorEditor (p.getCmajorProcessor().createUI())
     , postProcessorControls (*this, p.getPostProcessor())
     , neuralControls (*this, p.parameters.neural)
 {
     juce::ignoreUnused (processorRef);
 
-    addAndMakeVisible (*cmajorEditor);
+    // addAndMakeVisible (*cmajorEditor);
     addAndMakeVisible (topPanelComponent);
     addAndMakeVisible (bottomPanelComponent);
     addAndMakeVisible (postProcessorControls);
@@ -38,7 +38,7 @@ void PluginEditor::resized()
     topPanelComponent.setBounds (topPanelArea);
     bottomPanelComponent.setBounds (bottomPanelArea);
 
-    cmajorEditor->setBounds (area.removeFromLeft ((int) (getWidth() / 3)));
+    // cmajorEditor->setBounds (area.removeFromLeft ((int) (getWidth() / 3)));
     postProcessorControls.setBounds (area.removeFromRight ((int) (getWidth() / 3)));
     neuralControls.setBounds (area);
 }
