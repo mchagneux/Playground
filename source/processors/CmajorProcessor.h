@@ -199,6 +199,10 @@ public:
     {
         if (! patch->isPlayable() || processorRef.isSuspended())
         {
+            // if (! patch->isPlayable())
+            //     std::cout << "Patch not playable" << std::endl;
+            // else
+            //     std::cout << "Processor suspensed" << std::endl;
             audio.clear();
             midi.clear();
             return;
@@ -206,8 +210,8 @@ public:
 
         juce::ScopedNoDenormals noDenormals;
 
-        // if (auto ph = processorRef.getPlayHead())
-        // updateTimelineFromPlayhead (*ph);
+        if (auto ph = processorRef.getPlayHead())
+            updateTimelineFromPlayhead (*ph);
 
         auto audioChannels = audio.getArrayOfWritePointers();
         auto numFrames = static_cast<choc::buffer::FrameCount> (audio.getNumSamples());
@@ -227,8 +231,9 @@ public:
 
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
     {
-        auto [inChannels, outChannels] = getNumChannels (patch->getInputEndpoints(), patch->getOutputEndpoints());
-        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (inChannels), static_cast<choc::buffer::ChannelCount> (outChannels));
+        auto layout = processorRef.getBusesLayout();
+        // auto [inChannels, outChannels] = getNumChannels (patch->getInputEndpoints(), patch->getOutputEndpoints());
+        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()), static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
     }
 
     void applyRateAndBlockSize (double rate, uint32_t samplesPerBlock)
@@ -776,15 +781,16 @@ protected:
     static std::tuple<uint32_t, uint32_t> getNumChannels (const cmaj::EndpointDetailsList& inputs,
                                                           const cmaj::EndpointDetailsList& outputs)
     {
-        uint32_t inputChannelCount = 0, outputChannelCount = 0;
+        uint32_t inputChannelCount = 1, outputChannelCount = 1;
 
         // auto inputs = patch->get
-        for (auto& input : inputs)
-            inputChannelCount += input.getNumAudioChannels();
+        // for (auto& input : inputs)
+        //     inputChannelCount += input.getNumAudioChannels();
 
-        for (auto& output : outputs)
-            outputChannelCount += output.getNumAudioChannels();
-
+        // for (auto& output : outputs)
+        //     outputChannelCount += output.getNumAudioChannels();
+        std::cout << inputChannelCount << std::endl;
+        std::cout << outputChannelCount << std::endl;
         return { inputChannelCount, outputChannelCount };
     }
 
