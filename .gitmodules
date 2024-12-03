@@ -4,3 +4,6 @@
 [submodule "3rd_party/anira"]
 	path = 3rd_party/anira
 	url = git@github.com:anira-project/anira.git
+[submodule "3rd_party/JUCE"]
+	path = 3rd_party/JUCE
+	url = git@github.com:juce-framework/JUCE.git

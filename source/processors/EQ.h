@@ -62,9 +62,9 @@ class EQControls : public juce::Component
 public:
     EQControls (juce::AudioProcessorEditor& editorIn, EQ& eqIn)
         : eq (eqIn)
-        , handle0 (editorIn, *eq.filterChain.get<0>().parameters)
-        , handle1 (editorIn, *eq.filterChain.get<1>().parameters)
-        , handle2 (editorIn, *eq.filterChain.get<2>().parameters)
+        , handle0 (editorIn, *eqIn.filterChain.get<0>().parameters)
+        , handle1 (editorIn, *eqIn.filterChain.get<1>().parameters)
+        , handle2 (editorIn, *eqIn.filterChain.get<2>().parameters)
 
     {
         startTimer (20);
@@ -72,20 +72,9 @@ public:
         eq.filterChain.get<1>().addChangeListener (this);
         eq.filterChain.get<2>().addChangeListener (this);
 
-        handle0.sendInitialUpdates();
-        handle0.processInitialUpdates();
-
-        handle1.sendInitialUpdates();
-        handle1.processInitialUpdates();
-
-        handle2.sendInitialUpdates();
-        handle2.processInitialUpdates();
-
         addAndMakeVisible (handle0);
         addAndMakeVisible (handle1);
         addAndMakeVisible (handle2);
-
-        repaint();
     }
 
     ~EQControls() override
@@ -147,6 +136,10 @@ public:
         repaint();
     }
 
+    FilterHandle handle0;
+    FilterHandle handle1;
+    FilterHandle handle2;
+
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override
     {
@@ -162,7 +155,4 @@ private:
     EQ& eq;
 
     juce::Path analyzerPath;
-    FilterHandle handle0;
-    FilterHandle handle1;
-    FilterHandle handle2;
 };

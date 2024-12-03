@@ -10,14 +10,18 @@ PluginEditor::PluginEditor (Plugin& p)
     , neuralControls (*this, p.parameters.neural)
 {
     juce::ignoreUnused (processorRef);
+    setSize (1600, 900);
+    setResizable (true, true);
+
+    postProcessorControls.eq.handle0.sendInitialUpdates();
+    postProcessorControls.eq.handle1.sendInitialUpdates();
+    postProcessorControls.eq.handle2.sendInitialUpdates();
 
     addAndMakeVisible (*cmajorEditor);
     addAndMakeVisible (topPanelComponent);
     addAndMakeVisible (bottomPanelComponent);
     addAndMakeVisible (postProcessorControls);
     addAndMakeVisible (neuralControls);
-    setResizable (true, true);
-    setSize (1600, 900);
 }
 
 PluginEditor::~PluginEditor() {}

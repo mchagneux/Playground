@@ -196,14 +196,16 @@ public:
 
         updateYisQ();
 
-        if (YisQ.load())
-        {
-            setCentreRelative (cutoffToRelativeX (params.cutoff.get()), QToNormalizedY (params.Q.get()));
-        }
-        else
-        {
-            setCentreRelative (cutoffToRelativeX (params.cutoff.get()), 1.0f - gainRange.convertTo0to1 (params.gain.get()));
-        }
+        // if (YisQ.load())
+        // {
+        //     updateXFromNewCutoff (params.cutoff.get());
+        //     updateYFromNewResonance (params.Q.get());
+        // }
+        // else
+        // {
+        //     updateXFromNewCutoff (params.cutoff.get());
+        //     updateYFromNewGain (1.0f - gainRange.convertTo0to1 (params.gain.get()));
+        // }
     }
 
     ~FilterHandle() override
@@ -218,11 +220,14 @@ public:
 
     float getCurrentRelativeX()
     {
+        std::cout << "Parent width: " << juce::String ((float) getParentWidth()) << std::endl;
         return (float) getBoundsInParent().getCentreX() / (float) getParentWidth();
     }
 
     float getCurrentRelativeY()
     {
+        std::cout << "Parent height: " << juce::String ((float) getParentWidth()) << std::endl;
+
         return (float) getBoundsInParent().getCentreY() / (float) getParentHeight();
     }
 

@@ -4,12 +4,20 @@ project(Playground VERSION 0.0.1)
 
 
 set (TARGET_NAME ${PROJECT_NAME})
-Include (FetchContent)
+
 
 
 add_subdirectory(3rd_party/JUCE juce)                    
-# add_subdirectory(3rd_party/anira)
 add_subdirectory(assets)
+
+Include (FetchContent)
+FetchContent_Declare (melatonin_inspector
+  GIT_REPOSITORY https://github.com/sudara/melatonin_inspector.git
+  GIT_TAG origin/main
+  SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_inspector)
+FetchContent_MakeAvailable (melatonin_inspector)
+
+
 
 set(FORMATS_TO_BUILD Standalone VST3)
 
@@ -112,6 +120,7 @@ target_link_libraries(${TARGET_NAME}
         anira::anira
         cmaj_lib
         juce::juce_audio_utils
+        melatonin_inspector
 )
 
 file(GLOB_RECURSE INFERENCE_ENGINE_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/anira-1.0.0/lib/*.dll")
