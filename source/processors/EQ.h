@@ -72,13 +72,18 @@ public:
         eq.filterChain.get<1>().addChangeListener (this);
         eq.filterChain.get<2>().addChangeListener (this);
 
+        handle0.sendInitialUpdates();
+        handle0.processInitialUpdates();
+
+        handle1.sendInitialUpdates();
+        handle1.processInitialUpdates();
+
+        handle2.sendInitialUpdates();
+        handle2.processInitialUpdates();
+
         addAndMakeVisible (handle0);
         addAndMakeVisible (handle1);
         addAndMakeVisible (handle2);
-
-        handle0.sendInitialUpdates();
-        handle1.sendInitialUpdates();
-        handle2.sendInitialUpdates();
 
         repaint();
     }

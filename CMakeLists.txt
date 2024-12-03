@@ -11,7 +11,7 @@ add_subdirectory(3rd_party/JUCE juce)
 # add_subdirectory(3rd_party/anira)
 add_subdirectory(assets)
 
-set(FORMATS_TO_BUILD Standalone)
+set(FORMATS_TO_BUILD Standalone VST3)
 
 juce_add_plugin(${TARGET_NAME}
     PRODUCT_NAME "Playground"
@@ -124,4 +124,4 @@ foreach(FORMAT IN LISTS FORMATS_TO_BUILD)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${NECESSARY_DLLS}
             $<TARGET_FILE_DIR:${TARGET_NAME}>/${FORMAT})
-endforeach()
+endforeach()    

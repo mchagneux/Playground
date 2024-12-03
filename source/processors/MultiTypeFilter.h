@@ -211,6 +211,11 @@ public:
         type.removeListener (this);
     }
 
+    void processInitialUpdates()
+    {
+        repaint();
+    }
+
     float getCurrentRelativeX()
     {
         return (float) getBoundsInParent().getCentreX() / (float) getParentWidth();
@@ -422,30 +427,3 @@ private:
     juce::NormalisableRange<float> gainRange = juce::NormalisableRange<float> (-10.0f, 10.0f, 0.0f);
     // FilterControls* listener = nullptr;
 };
-
-// struct FilterControls: public juce::Component
-// {
-//     FilterControls(juce::AudioProcessorEditor& editorIn, StereoIIRFilter& f)
-//         : filterResponse(editorIn, f)
-//     {
-//         addAllAndMakeVisible(*this,
-//                 filterResponse);
-//     }
-
-//     ~FilterControls() override
-//     {
-//         // FilterHandle.removeListener();
-//     }
-
-//     void resized() override
-//     {
-//         auto r = getLocalBounds();
-//         // auto responseArea = r.removeFromTop((int) (0.6 * getHeight()));
-//         filterResponse.setBounds(r);
-//         // updateHandlePosition();
-//     }
-
-// private:
-//     MagnitudeResponseComponent filterResponse;
-
-// };

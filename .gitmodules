@@ -1,6 +1,3 @@
-[submodule "3rd_party/JUCE"]
-	path = 3rd_party/JUCE
-	url = git@github.com:juce-framework/JUCE.git
 [submodule "3rd_party/cmajor"]
 	path = 3rd_party/cmajor
 	url = git@github.com:cmajor-lang/cmajor.git
