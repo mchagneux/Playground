@@ -46,11 +46,11 @@ target_include_directories(${TARGET_NAME} PUBLIC ${anira_INCLUDE_DIRS})
 
 # add_library(cmaj IMPORTED)
 
-# foreach (DIR ${CMAKE_CURRENT_LIST_DIR}/3rd_party/cmaj/include)
-#     if (IS_DIRECTORY ${DIR})
-#         target_include_directories(${TARGET_NAME} PUBLIC ${DIR})
-#     endif ()
-# endforeach ()
+foreach (DIR ${CMAKE_CURRENT_LIST_DIR}/3rd_party/cmajor/include)
+    if (IS_DIRECTORY ${DIR})
+        target_include_directories(${TARGET_NAME} PUBLIC ${DIR})
+    endif ()
+endforeach ()
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC

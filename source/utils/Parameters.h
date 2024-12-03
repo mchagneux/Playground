@@ -266,7 +266,7 @@ struct EQParameters
 {
     static auto getStartFreq (int filterNb, int numFilters)
     {
-        return 20.0f + juce::mapToLog10 (((float) (filterNb + 1)) / (float) numFilters, 20.0f, 20000.0f);
+        return 20.0f + juce::mapToLog10 (((float) (filterNb + 1)) / (float) numFilters, 20.0f, 15000.0f);
     }
 
     static auto getFilterParamID (int filterNb) noexcept
