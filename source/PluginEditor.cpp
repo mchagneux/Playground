@@ -8,6 +8,7 @@ PluginEditor::PluginEditor (Plugin& p)
     , cmajorEditor (p.getCmajorProcessor().createUI())
     , postProcessorControls (*this, p.getPostProcessor())
     , neuralControls (*this, p.parameters.neural)
+    , topPanelComponent (p.outputFIFO)
 {
     juce::ignoreUnused (processorRef);
     setSize (1600, 900);

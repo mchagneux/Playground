@@ -76,6 +76,7 @@ void Plugin::prepareToPlay (double sampleRate, int samplesPerBlock)
     cmajorJITProcessor->prepare (processSpec);
     neuralProcessor.prepare (processSpec);
     postProcessor.prepare (processSpec);
+    outputFIFO.setup ((int) sampleRate);
 }
 
 void Plugin::releaseResources()
@@ -117,6 +118,7 @@ void Plugin::processBlock (juce::AudioBuffer<float>& buffer,
     auto context = juce::dsp::ProcessContextReplacing<float> (block);
     neuralProcessor.process (context);
     postProcessor.process (context);
+    outputFIFO.addAudioData (buffer);
 }
 
 //==============================================================================

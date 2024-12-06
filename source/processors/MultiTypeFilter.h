@@ -220,14 +220,11 @@ public:
 
     float getCurrentRelativeX()
     {
-        std::cout << "Parent width: " << juce::String ((float) getParentWidth()) << std::endl;
         return (float) getBoundsInParent().getCentreX() / (float) getParentWidth();
     }
 
     float getCurrentRelativeY()
     {
-        std::cout << "Parent height: " << juce::String ((float) getParentWidth()) << std::endl;
-
         return (float) getBoundsInParent().getCentreY() / (float) getParentHeight();
     }
 

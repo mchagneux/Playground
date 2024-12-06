@@ -6,6 +6,7 @@
 #include "./processors/NeuralProcessor.h"
 #include "./processors/CmajorProcessor.h"
 #include "./processors/PostProcessor.h"
+#include "./utils/CircularBuffer.h"
 
 // #include <melatonin_perfetto/melatonin_perfetto.h>
 
@@ -75,6 +76,7 @@ public:
     }
 
     Parameters parameters;
+    CircularBuffer<SampleType> outputFIFO;
 
 private:
     explicit Plugin (
