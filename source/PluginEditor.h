@@ -3,6 +3,7 @@
 #include "./processors/PostProcessor.h"
 #include "./utils/Panels.h"
 #include "./utils/Scope.h"
+#include "./utils/VisualizationManager.h"
 #include "Plugin.h"
 
 #include "melatonin_inspector/melatonin_inspector.h"
@@ -28,6 +29,7 @@ private:
     PostProcessorControls postProcessorControls;
     NeuralControls neuralControls;
     melatonin::Inspector inspector { *this };
+    VisualizationManager outputVisualizersManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };

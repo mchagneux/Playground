@@ -1,13 +1,13 @@
 #pragma once
-#include <JuceHeader.h>
+#include "./Components.h"
 
-struct GainMeter : public juce::Component
+struct GainMeter : public AudioReactiveComponent
 {
     GainMeter() {}
 
     void paint (juce::Graphics& g) override
     {
-        if (! valueDrawn)
+        if (! drawnPrevious)
         {
             auto bounds = getLocalBounds().toFloat();
 
@@ -17,10 +17,16 @@ struct GainMeter : public juce::Component
 
             g.drawRect (rectangleToDraw);
             g.fillRect (rectangleToDraw);
-            valueDrawn = true;
+            drawnPrevious = true;
         };
     }
 
-    bool valueDrawn = false;
+    void updateFromBuffer (const juce::AudioBuffer<float>& buffer) override
+    {
+        valueToDraw01 = buffer.getRMSLevel (0, 0, buffer.getNumSamples());
+        drawnPrevious = false;
+    }
+
+private:
     float valueToDraw01 = 0.0f;
 };

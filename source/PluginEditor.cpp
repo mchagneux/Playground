@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "./utils/Panels.h"
+#include "Components.h"
 
 //==============================================================================
 PluginEditor::PluginEditor (Plugin& p)
@@ -8,7 +9,7 @@ PluginEditor::PluginEditor (Plugin& p)
     , cmajorEditor (p.getCmajorProcessor().createUI())
     , postProcessorControls (*this, p.getPostProcessor())
     , neuralControls (*this, p.parameters.neural)
-    , topPanelComponent (p.outputFIFO)
+    , outputVisualizersManager (p.outputFIFO, juce::Array<AudioReactiveComponent*> { &topPanelComponent.scope, &topPanelComponent.gainMeter })
 {
     juce::ignoreUnused (processorRef);
     setSize (1600, 900);

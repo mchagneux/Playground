@@ -179,3 +179,12 @@ static void performLayout (const juce::Rectangle<int>& bounds,
 
     grid.performLayout (bounds);
 }
+
+class AudioReactiveComponent : public juce::Component
+{
+public:
+    AudioReactiveComponent() {}
+
+    virtual void updateFromBuffer (const juce::AudioBuffer<float>& buffer) = 0;
+    bool drawnPrevious = false;
+};

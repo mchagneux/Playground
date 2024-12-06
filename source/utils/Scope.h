@@ -1,8 +1,8 @@
 #pragma once
-#include <JuceHeader.h>
+#include "./Components.h"
 
 template <typename Type>
-struct Scope : public juce::Component
+struct Scope : public AudioReactiveComponent
 {
 public:
     Scope()
@@ -14,7 +14,7 @@ public:
     void paint (juce::Graphics& g) override
 
     {
-        if (! samplesDrawn)
+        if (! drawnPrevious)
         {
             auto bounds = getLocalBounds().toFloat();
 
@@ -39,7 +39,7 @@ public:
             }
             g.setColour (juce::Colours::grey);
             g.strokePath (scopePath, juce::PathStrokeType (1.0));
-            samplesDrawn = true;
+            drawnPrevious = true;
         }
     }
 
@@ -54,10 +54,14 @@ public:
         return juce::jmap (normalizedIndex, bounds.getBottomLeft().getX(), bounds.getWidth());
     }
 
-    juce::AudioBuffer<float> samplesToDraw { 1, 1000 };
-    bool samplesDrawn = false;
+    void updateFromBuffer (const juce::AudioBuffer<float>& buffer) override
+    {
+        samplesToDraw.copyFrom (0, 0, buffer.getReadPointer (0), samplesToDraw.getNumSamples());
+        drawnPrevious = false;
+    }
 
 private:
+    juce::AudioBuffer<float> samplesToDraw { 1, 1000 };
     int numSamplesToDraw;
     juce::Path scopePath;
 };
