@@ -148,17 +148,24 @@ private:
 struct NeuralControls final : public juce::Component
 {
     explicit NeuralControls (juce::AudioProcessorEditor& editorIn, const NeuralParameters& parameters)
-        : dryWet (editorIn, parameters.neuralDryWet)
+        : sliderAttachment (parameters.neuralDryWet, dryWetSlider, nullptr)
 
     {
-        addAllAndMakeVisible (*this, dryWet);
+        sliderLabel.attachToComponent (&dryWetSlider, false);
+        dryWetSlider.setSliderStyle (juce::Slider::SliderStyle::LinearBarVertical);
+        addAndMakeVisible (dryWetSlider);
+        addAndMakeVisible (sliderLabel);
     }
 
     void resized()
     {
-        performLayout (getLocalBounds(), dryWet);
+        auto r = getLocalBounds();
+        dryWetSlider.setBounds (r.reduced ((float) getWidth() / 4.0f, (float) getHeight() / 6.0f));
     }
 
     // AttachedCombo backendType;
-    AttachedSlider dryWet;
+    // AttachedSlider dryWet;
+    juce::Slider dryWetSlider;
+    juce::Label sliderLabel { "Dry/Wet" };
+    juce::SliderParameterAttachment sliderAttachment;
 };

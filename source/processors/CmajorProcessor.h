@@ -188,7 +188,7 @@ public:
         sampleRate = spec.sampleRate;
         blockSize = spec.maximumBlockSize;
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
-        // std::cout << "Prepared audio." << std::endl;
+        std::cout << "Prepared audio." << std::endl;
     }
 
     void reset()
@@ -199,10 +199,6 @@ public:
     {
         if (! patch->isPlayable() || processorRef.isSuspended())
         {
-            // if (! patch->isPlayable())
-            //     std::cout << "Patch not playable" << std::endl;
-            // else
-            //     std::cout << "Processor suspensed" << std::endl;
             audio.clear();
             midi.clear();
             return;
@@ -233,7 +229,12 @@ public:
     {
         auto layout = processorRef.getBusesLayout();
         // auto [inChannels, outChannels] = getNumChannels (patch->getInputEndpoints(), patch->getOutputEndpoints());
-        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()), static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
+        auto ins = static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels());
+        auto outs = static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels());
+
+        std::cout << "Num ins about to be set in Cmajor" << juce::String (ins) << std::endl;
+        std::cout << "Num outs about to be set in Cmajor" << juce::String (outs) << std::endl;
+        return cmaj::Patch::PlaybackParams (rate, requestedBlockSize, ins, outs);
     }
 
     void applyRateAndBlockSize (double rate, uint32_t samplesPerBlock)
@@ -247,8 +248,8 @@ public:
         applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (blockSize));
     }
 
-    double sampleRate = 0;
-    uint32_t blockSize = 0;
+    double sampleRate = 48000;
+    uint32_t blockSize = 2048;
     std::shared_ptr<cmaj::Patch> patch;
     juce::AudioProcessor& processorRef;
     std::string statusMessage;
@@ -285,13 +286,13 @@ protected:
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
 
-        // std::cout << "Handled patch change" << std::endl;
+        std::cout << "Handled patch change" << std::endl;
     }
 
     void updateLatency (int newLatency)
     {
         latency = newLatency;
-        // std::cout << "About to update latency" << std::endl;
+        std::cout << "About to update latency" << std::endl;
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -301,8 +302,7 @@ protected:
             statusMessage = newMessage;
             isStatusMessageError = isError;
             notifyEditorStatusMessageChanged();
-            // std::cout << statusMessage << std::endl;
-            // std::cout << isS << std::endl;
+            std::cout << statusMessage << std::endl;
         }
     }
 
@@ -428,8 +428,12 @@ protected:
         }
 
         if (sampleRate > 0)
+        {
+            std::cout << "Samplerate about to be set:" << juce::String (sampleRate) << std::endl;
             applyCurrentRateAndBlockSize();
+        }
 
+        std::cout << "About to load patch" << std::endl;
         patch->loadPatch (loadParams, DerivedType::isPrecompiled);
     }
 
@@ -1102,7 +1106,10 @@ public:
             setDragOver (false);
 
             if (isInterestedInFileDrag (files))
+            {
+                std::cout << "Valid file dropped." << std::endl;
                 plugin.loadPatch (files[0].toStdString());
+            }
         }
 
         void setDragOver (bool b)
