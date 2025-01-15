@@ -87,8 +87,8 @@ struct PostProcessorControls final : public juce::Component
     {
         auto r = getLocalBounds();
         // distortion.setBounds(r.removeFromTop((int) (getHeight() / 2)));
-        eq.setBounds (r.removeFromTop (getHeight() / 2));
-        compressor.setBounds (r.removeFromTop ((int) (r.getHeight() / 2)));
+        eq.setBounds (r.removeFromTop (getHeight() / 3));
+        compressor.setBounds (r.removeFromTop ((int) (r.getHeight() / 3)));
     }
 
     EQControls eq;

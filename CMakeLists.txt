@@ -5,8 +5,6 @@ project(Playground VERSION 0.0.1)
 
 set (TARGET_NAME ${PROJECT_NAME})
 
-
-
 add_subdirectory(3rd_party/JUCE juce)                    
 add_subdirectory(assets)
 
@@ -51,6 +49,7 @@ foreach (DIR ${CMAKE_CURRENT_LIST_DIR}/3rd_party/cmajor/include)
         target_include_directories(${TARGET_NAME} PUBLIC ${DIR})
     endif ()
 endforeach ()
+set(RAVE_MODELS_PATH_PYTORCH "${CMAKE_CURRENT_LIST_DIR}/models/rave/models")
 
 target_compile_definitions(${TARGET_NAME}
     PUBLIC
@@ -58,7 +57,7 @@ target_compile_definitions(${TARGET_NAME}
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_WEB_BROWSER=0
         DONT_SET_USING_JUCE_NAMESPACE=1
-        # RAVE_MODELS_PATH_PYTORCH="${RAVE_MODELS_PATH_PYTORCH}"
+        RAVE_MODELS_PATH_PYTORCH="${RAVE_MODELS_PATH_PYTORCH}"
 )
     
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/source/*.h)

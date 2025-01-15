@@ -33,9 +33,7 @@
 #endif
 
 #include <utility>
-#include "../3rd_party/cmajor/include/choc/memory/choc_xxHash.h"
 #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWebView.h"
-#include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_GeneratedCppEngine.h"
 
 #if CMAJ_USE_QUICKJS_WORKER
 #include "../3rd_party/cmajor/include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
@@ -228,7 +226,6 @@ public:
     cmaj::Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
     {
         auto layout = processorRef.getBusesLayout();
-        // auto [inChannels, outChannels] = getNumChannels (patch->getInputEndpoints(), patch->getOutputEndpoints());
         auto ins = static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels());
         auto outs = static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels());
 

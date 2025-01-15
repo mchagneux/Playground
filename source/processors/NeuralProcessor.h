@@ -2,10 +2,8 @@
 
 #include <JuceHeader.h>
 
-#include <anira/anira.h>
 #include "../neural_configs/RAVE.h"
 #include "../utils/Parameters.h"
-#include "../utils/Components.h"
 
 //==============================================================================
 class NeuralProcessor : private juce::AudioProcessorParameter::Listener
@@ -14,7 +12,7 @@ class NeuralProcessor : private juce::AudioProcessorParameter::Listener
 public:
     NeuralProcessor (const NeuralParameters& p)
         : parameters (p)
-        , inferenceHandler (prePostProcessor, inferenceConfig)
+        , inferenceHandler (prePostProcessor, inferenceConfig, raveProcessor)
         , dryWetMixer (32768) // 32768 samples of max latency compensation for the dry-wet mixer
     {
         parameters.neuralDryWet.addListener (this);
@@ -43,7 +41,7 @@ public:
 
         monoBuffer.setSize (1, spec.maximumBlockSize);
         inferenceHandler.prepare (monoConfig);
-        inferenceHandler.set_inference_backend (anira::LIBTORCH);
+        inferenceHandler.set_inference_backend (anira::CUSTOM);
 
         auto newLatency = inferenceHandler.get_latency();
 
@@ -138,6 +136,7 @@ private:
     juce::AudioBuffer<float> monoBuffer;
 
     anira::InferenceConfig inferenceConfig = RAVEConfig;
+    RAVEProcessor raveProcessor { inferenceConfig };
     anira::PrePostProcessor prePostProcessor;
     anira::InferenceHandler inferenceHandler;
     juce::dsp::DryWetMixer<float> dryWetMixer;

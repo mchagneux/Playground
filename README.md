@@ -1,3 +1,7 @@
+
+
+![alt text](demo_playground.PNG)
+
 # TODO 
 *Delay the GUI side for now, concentrate on how to deal with audio and its intricacies*
 
